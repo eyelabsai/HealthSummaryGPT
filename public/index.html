@@ -1,0 +1,160 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Transcription & Summarisation</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 2rem;
+    }
+    button {
+      margin: 0.5rem 0;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+    }
+    textarea {
+      width: 100%;
+      height: 8rem;
+      margin-bottom: 1rem;
+      resize: vertical;
+      font-size: 1rem;
+    }
+    .status {
+      margin-top: 1rem;
+      font-style: italic;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h2>Transcribe and Summarize</h2>
+
+  <button id="startBtn">🎤 Start Recording</button>
+  <button id="stopBtn" disabled>⏹ Stop Recording</button>
+
+  <div>
+    <h3>Transcript</h3>
+    <textarea id="transcript" placeholder="Your transcription will appear here…" readonly></textarea>
+  </div>
+
+  <button id="summariseBtn" disabled>📄 Summarize Transcript</button>
+
+  <div>
+    <h3>Summary</h3>
+    <textarea id="summary" placeholder="Summary will appear here…" readonly></textarea>
+  </div>
+
+  <div class="status" id="status">Idle.</div>
+
+  <script>
+    // -------------------------------
+    // Utility to handle audio recording
+    // -------------------------------
+    let mediaRecorder, recordedChunks = [];
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const statusEl = document.getElementById('status');
+    const transcriptEl = document.getElementById('transcript');
+    const summariseBtn = document.getElementById('summariseBtn');
+    const summaryEl = document.getElementById('summary');
+
+    startBtn.addEventListener('click', async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Audio recording not supported in this browser.');
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        recordedChunks = [];
+        mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            recordedChunks.push(e.data);
+          }
+        };
+
+        mediaRecorder.onstop = handleRecordingStop;
+        mediaRecorder.start();
+
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        statusEl.textContent = 'Recording…';
+      } catch (err) {
+        console.error(err);
+        alert('Could not start microphone.');
+      }
+    });
+
+    stopBtn.addEventListener('click', () => {
+      mediaRecorder.stop();
+      stopBtn.disabled = true;
+      statusEl.textContent = 'Processing audio…';
+    });
+
+    // After stopping, upload the audio blob:
+    async function handleRecordingStop() {
+      const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+      const formData = new FormData();
+      formData.append('audio', blob, 'recording.webm');
+
+      try {
+        const res = await fetch('/transcribe', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+          transcriptEl.value = data.transcript;
+          summariseBtn.disabled = false;
+          statusEl.textContent = 'Transcription complete.';
+        } else {
+          statusEl.textContent = 'Transcription failed.';
+          console.error(data.error);
+        }
+      } catch (err) {
+        statusEl.textContent = 'Error during transcription.';
+        console.error(err);
+      } finally {
+        startBtn.disabled = false;
+      }
+    }
+
+    // Summarise button handler:
+    summariseBtn.addEventListener('click', async () => {
+      const transcript = transcriptEl.value.trim();
+      if (!transcript) {
+        alert('No transcript to summarise.');
+        return;
+      }
+
+      summariseBtn.disabled = true;
+      statusEl.textContent = 'Generating summary…';
+
+      try {
+        const res = await fetch('/summarise', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transcript })
+        });
+        const data = await res.json();
+        if (data.success) {
+          summaryEl.value = data.summary;
+          statusEl.textContent = 'Summary ready.';
+        } else {
+          statusEl.textContent = 'Summarisation failed.';
+          console.error(data.error);
+        }
+      } catch (err) {
+        statusEl.textContent = 'Error during summarisation.';
+        console.error(err);
+      } finally {
+        summariseBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
