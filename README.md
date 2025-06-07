@@ -57,16 +57,6 @@ OPENAI_API_KEY=sk-YOUR_OPENAI_KEY_HERE
 
 Ensure that the key is valid and grants access to both gpt-4o-mini-transcribe and gpt-4o-mini.
 
-Project Structure
-
-.
-├── public
-│   └── index.html           ← Front-end HTML/JS for recording, transcription, summarisation
-├── uploads                  ← Multer’s temporary storage for incoming audio blobs
-├── server.js                ← Main Express server
-├── package.json
-└── .env                     ← Contains your OpenAI API key (not committed to Git)
-
 
 ## Usage
 
