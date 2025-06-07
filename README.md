@@ -22,7 +22,7 @@ You can record your voice, obtain a transcription, then click “Summarise” to
 
 1. **Clone the repository** (or copy files) into a local folder:  
    ```bash
-   git clone https://github.com/your-username/WhisperTranscription.git
+   git clone https://github.com/eyelabsai/WhisperTranscription.git
    cd WhisperTranscription
    ```
 
