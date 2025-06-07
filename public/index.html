@@ -45,6 +45,18 @@
     <h3>Summary</h3>
     <textarea id="summary" placeholder="Summary will appear here…" readonly></textarea>
   </div>
+  <div>
+    <h3>TLDR</h3>
+    <textarea id="tldr" placeholder="TLDR will appear here…" readonly></textarea>
+  </div>
+  <div>
+    <h3>Specialty</h3>
+    <textarea id="specialty" placeholder="Specialty will appear here…" readonly></textarea>
+  </div>
+  <div>
+    <h3>Date</h3>
+    <textarea id="date" placeholder="Date will appear here…" readonly></textarea>
+  </div>
 
   <div class="status" id="status">Idle.</div>
 
@@ -59,6 +71,9 @@
     const transcriptEl = document.getElementById('transcript');
     const summariseBtn = document.getElementById('summariseBtn');
     const summaryEl = document.getElementById('summary');
+    const tldrEl = document.getElementById('tldr');
+    const specialtyEl = document.getElementById('specialty');
+    const dateEl = document.getElementById('date');
 
     startBtn.addEventListener('click', async () => {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -143,6 +158,9 @@
         const data = await res.json();
         if (data.success) {
           summaryEl.value = data.summary;
+          tldrEl.value = data.tldr || '';
+          specialtyEl.value = data.specialty || '';
+          dateEl.value = data.date || '';
           statusEl.textContent = 'Summary ready.';
         } else {
           statusEl.textContent = 'Summarisation failed.';
