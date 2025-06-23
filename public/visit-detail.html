@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visit Details - OpenCare</title>
+    <style>
+        :root {
+            --background: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --border-color: #dee2e6;
+            --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background);
+            margin: 0;
+            padding: 2rem;
+            color: var(--text-primary);
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        .back-link {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+        .back-link:hover {
+            color: var(--text-primary);
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .visit-detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+        }
+        .meta-data {
+            border-right: 1px solid var(--border-color);
+            padding-right: 2rem;
+        }
+        .meta-item {
+            margin-bottom: 1.5rem;
+        }
+        .meta-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+        .meta-value {
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        .summary-content h2 {
+            font-size: 1.5rem;
+            margin-top: 0;
+        }
+        .summary-content p {
+            line-height: 1.7;
+            white-space: pre-wrap; /* Respects newlines in the summary */
+        }
+        @media (max-width: 768px) {
+            .visit-detail-grid {
+                grid-template-columns: 1fr;
+            }
+            .meta-data {
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+                padding-right: 0;
+                padding-bottom: 1rem;
+                margin-bottom: 2rem;
+            }
+            .back-link {
+                position: static;
+                transform: none;
+                display: block;
+                margin-bottom: 1rem;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/" class="back-link">← Back to Dashboard</a>
+            <h1>Visit Details</h1>
+        </div>
+
+        <div class="card" id="visit-details-container">
+            <!-- Details will be loaded here -->
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const visitDetailsContainer = document.getElementById('visit-details-container');
+            
+            // Get visit ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const visitId = urlParams.get('id');
+
+            if (!visitId) {
+                visitDetailsContainer.innerHTML = '<p>No visit ID provided.</p>';
+                return;
+            }
+
+            const visits = JSON.parse(localStorage.getItem('opencare_visits')) || [];
+            const visit = visits.find(v => v.id === visitId);
+
+            if (!visit) {
+                visitDetailsContainer.innerHTML = '<p>Visit not found.</p>';
+                return;
+            }
+
+            // Populate the details
+            visitDetailsContainer.innerHTML = `
+                <div class="visit-detail-grid">
+                    <div class="meta-data">
+                        <div class="meta-item">
+                            <div class="meta-label">Date of Visit</div>
+                            <div class="meta-value">${visit.date}</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Medical Specialty</div>
+                            <div class="meta-value">${visit.specialty}</div>
+                        </div>
+                    </div>
+                    <div class="summary-content">
+                        <h2>Summary</h2>
+                        <p>${visit.summary}</p>
+                        <br>
+                        <h2>TL;DR</h2>
+                        <p>${visit.tldr}</p>
+                    </div>
+                </div>
+            `;
+        });
+    </script>
+</body>
+</html> 

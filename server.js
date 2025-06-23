@@ -73,12 +73,54 @@ app.post('/summarise', async (req, res) => {
         },
         {
           role: 'user',
-          content: `Analyze the following medical transcript and return a JSON object with the following keys:\n
+          content: `Analyze the following medical transcript and return a JSON object with the following keys:
 {
   "summary": "A robust, multi-sentence summary covering all the concepts discussed.",
+  "tldr": "A very short, one-sentence summary.",
   "specialty": "A short phrase indicating the medical specialty (e.g., 'Ophthalmology')",
-  "date": "If a date is mentioned, return it; otherwise return 'Date not specified'"
+  "date": "Extract the actual appointment/visit date. If the transcript mentions 'today', 'today's visit', 'today's appointment', or similar phrases indicating this is happening today, return 'TODAY'. If a specific date is mentioned (like 'March 15th'), return that date. If no date context is found, return 'Not specified'.",
+  "medications": [
+    {
+      "name": "Corrected medication name (fix any transcription spelling errors)",
+      "dosage": "e.g., 10mg",
+      "frequency": "e.g., daily, twice daily, every 8 hours",
+      "timing": "e.g., morning, evening, with meals, before bed",
+      "route": "e.g., oral, eye drops, topical",
+      "laterality": "e.g., left eye, right eye, both eyes (if applicable)",
+      "duration": "e.g., 7 days, until finished, ongoing",
+      "instructions": "Any special instructions like 'take with food', 'avoid alcohol', 'shake well'",
+      "fullInstructions": "Complete patient instructions combining all the above information"
+    }
+  ]
 }
+
+For medications, extract ALL available information including:
+- Exact dosage and frequency
+- Timing (when to take)
+- Route of administration
+- Eye laterality for eye medications
+- Duration of treatment
+- Special instructions or warnings
+- Combine everything into a clear, patient-friendly fullInstructions field
+
+IMPORTANT: Date Extraction
+- If the transcript mentions "today", "today's visit", "today's appointment", "during today's visit", etc., return "TODAY" (not the actual date)
+- If a specific date is mentioned (like "March 15th", "last week", "yesterday"), convert it to YYYY-MM-DD format
+- Look for context clues like "in today's appointment we discussed", "during this visit", "today I'm here for"
+- If no date context is found, return "Not specified"
+
+IMPORTANT: Medication Name Correction
+- If a medication name appears to be misspelled or phonetically transcribed incorrectly, correct it to the proper spelling
+- Common transcription errors include:
+  * Phonetic misspellings (e.g., "cosopt" transcribed as "cosoft", "cosopted")
+  * Similar-sounding letters (e.g., "b" vs "p", "f" vs "ph", "c" vs "k")
+  * Missing or extra syllables
+  * Common drug name variations
+- Use your medical knowledge to identify and correct medication names to their standard pharmaceutical spelling
+- Consider the medical specialty context to help identify the most likely medication
+- If you're unsure about a medication name, make your best educated guess based on context and common medications
+
+If no medications are mentioned, return an empty array for the "medications" key.
 
 Transcript:
 ${transcript}`
@@ -107,36 +149,24 @@ ${transcript}`
       });
     }
 
-    let { summary, specialty, date } = parsed;
+    let { summary, specialty, date, tldr, medications } = parsed;
 
-    // Fallback date if not provided
-    if (!date || date.toLowerCase().includes('not specified')) {
-      const today = new Date();
-      const yyyy = today.getFullYear();
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const dd = String(today.getDate()).padStart(2, '0');
-      date = `${yyyy}-${mm}-${dd}`;
-    }
+    // Always use today's date for new visits (since they're being recorded now)
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    date = `${yyyy}-${mm}-${dd}`;
 
-    // Generate TLDR
-    const tldrResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: 'system', content: 'You are an assistant that produces clear, concise medical TLDRs.' },
-        { role: 'user', content: `Please provide a TLDR (1–2 sentences) of the following transcript:\n\n${transcript}` }
-      ],
-      temperature: 0.5,
-      max_tokens: 80
-    });
-
-    const tldr = tldrResponse.choices[0].message.content.trim();
+    console.log('Setting visit date to today:', date);
 
     return res.json({
       success: true,
       summary: summary || 'No summary available',
       specialty: specialty || 'Specialty not identified',
       date,
-      tldr: tldr || ''
+      tldr: tldr || '',
+      medications: medications || []
     });
   } catch (err) {
     console.error('Summarisation error:', err);
