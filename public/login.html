@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenCare Login / Register</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e0e7ff 100%);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 600px;
+      margin: 3rem auto;
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(102,126,234,0.13);
+      padding: 2.5rem 2.5rem 2rem 2.5rem;
+      position: relative;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 2rem;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #333;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 2.2rem;
+      margin-top: 1.5rem;
+    }
+    .section {
+      margin-bottom: 0.5rem;
+    }
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #667eea;
+      margin-bottom: 1.1rem;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .field-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem 2.5%;
+    }
+    .field {
+      flex: 1 1 47%;
+      min-width: 180px;
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 0.5rem;
+      position: relative;
+      overflow: visible;
+    }
+    .field label {
+      font-size: 0.98rem;
+      font-weight: 500;
+      color: #444;
+      margin-bottom: 0.4rem;
+      letter-spacing: 0.1px;
+    }
+    .field input, .field select {
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      border: 1px solid #ccd6f6;
+      font-size: 1.05rem;
+      background: #f8f9fa;
+      transition: border 0.2s, box-shadow 0.2s;
+    }
+    .field input:focus, .field select:focus {
+      border-color: #667eea;
+      outline: none;
+      box-shadow: 0 0 0 2px #e0e7ff;
+    }
+    /* Make email and password fields larger on both login and registration */
+    #emailField, #passwordField {
+      font-size: 1.25rem !important;
+      padding: 1.2rem 1.1rem !important;
+      border-radius: 10px !important;
+      margin-bottom: 1.1rem !important;
+      border: 1.5px solid #bfc8f8 !important;
+      background: #f8f9fa !important;
+    }
+    .register-btn {
+      width: 100%;
+      padding: 1rem;
+      border-radius: 10px;
+      border: none;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      font-size: 1.2rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 1.5rem;
+      box-shadow: 0 2px 8px rgba(102,126,234,0.08);
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .register-btn:hover {
+      background: linear-gradient(90deg, #5a67d8 0%, #6b47b6 100%);
+      box-shadow: 0 4px 16px rgba(102,126,234,0.13);
+    }
+    .toggle-link {
+      color: #667eea;
+      cursor: pointer;
+      text-align: center;
+      margin-top: 1.5rem;
+      text-decoration: underline;
+      font-size: 1.05rem;
+    }
+    .message {
+      text-align: center;
+      margin-top: 1.2rem;
+      font-size: 1.05rem;
+    }
+    .error { color: #dc3545; }
+    .success { color: #28a745; }
+    @media (max-width: 600px) {
+      .container {
+        max-width: 98vw;
+        padding: 1.2rem 0.5rem;
+      }
+      form {
+        gap: 1.2rem;
+      }
+      .field-group {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .field {
+        min-width: 0;
+      }
+    }
+    .multi-select {
+      min-height: 48px;
+      border: 1px solid #ccd6f6;
+      border-radius: 8px;
+      background: #f8f9fa;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.5rem 0.4rem 0.5rem;
+      cursor: text;
+    }
+    .multi-select input {
+      border: none;
+      background: transparent;
+      outline: none;
+      font-size: 1.05rem;
+      min-width: 120px;
+      flex: 1;
+      padding: 0.4rem 0;
+    }
+    .multi-tag {
+      background: #e0e7ff;
+      color: #4c51bf;
+      border-radius: 6px;
+      padding: 0.2rem 0.7rem 0.2rem 0.5rem;
+      font-size: 0.98rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .multi-tag-remove {
+      background: none;
+      border: none;
+      color: #667eea;
+      font-size: 1.1rem;
+      cursor: pointer;
+      margin-left: 0.2rem;
+    }
+    .multi-suggestions {
+      position: absolute;
+      left: 0;
+      top: 100%;
+      margin-top: 0.2rem;
+      background: #fff;
+      border: 1px solid #ccd6f6;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(102,126,234,0.08);
+      z-index: 100;
+      min-width: 220px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .multi-suggestion {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      font-size: 1.02rem;
+      color: #333;
+    }
+    .multi-suggestion:hover, .multi-suggestion.active {
+      background: #e0e7ff;
+      color: #4c51bf;
+    }
+    /* Address autocomplete suggestions */
+    .address-suggestions {
+      position: absolute;
+      left: 0;
+      top: 100%;
+      margin-top: 0.2rem;
+      background: #fff;
+      border: 1px solid #ccd6f6;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(102,126,234,0.08);
+      z-index: 10;
+      min-width: 220px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .address-suggestion {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      font-size: 1.02rem;
+      color: #333;
+    }
+    .address-suggestion:hover, .address-suggestion.active {
+      background: #e0e7ff;
+      color: #4c51bf;
+    }
+  </style>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+  <script src="/js/firebase-client.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h2 id="formTitle">Login to OpenCare</h2>
+    <form id="authForm">
+      <div id="registerFields" style="display:none;">
+        <div class="section">
+          <div class="section-title">Personal Info</div>
+          <div class="field-group">
+            <div class="field">
+              <label for="nameField">Full Name</label>
+              <input type="text" id="nameField" autocomplete="name" />
+            </div>
+            <div class="field">
+              <label for="dobField">Date of Birth</label>
+              <input type="date" id="dobField" />
+            </div>
+            <div class="field">
+              <label for="genderField">Gender</label>
+              <select id="genderField">
+                <option value="">Select</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+                <option value="Prefer not to say">Prefer not to say</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="phoneField">Phone Number</label>
+              <input type="tel" id="phoneField" autocomplete="tel" />
+            </div>
+            <div class="field" style="flex-basis:100%;">
+              <label for="addressField">Address</label>
+              <input type="text" id="addressField" autocomplete="street-address" />
+            </div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Insurance</div>
+          <div class="field-group">
+            <div class="field">
+              <label for="insuranceProviderField">Insurance Provider</label>
+              <select id="insuranceProviderField">
+                <option value="">Select</option>
+                <option value="Aetna">Aetna</option>
+                <option value="Blue Cross">Blue Cross</option>
+                <option value="Cigna">Cigna</option>
+                <option value="UnitedHealthcare">UnitedHealthcare</option>
+                <option value="Kaiser">Kaiser</option>
+                <option value="None">None</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="insuranceMemberIdField">Insurance Member ID</label>
+              <input type="text" id="insuranceMemberIdField" />
+            </div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Emergency</div>
+          <div class="field-group">
+            <div class="field">
+              <label for="emergencyContactNameField">Emergency Contact Name</label>
+              <input type="text" id="emergencyContactNameField" />
+            </div>
+            <div class="field">
+              <label for="emergencyContactPhoneField">Emergency Contact Phone</label>
+              <input type="tel" id="emergencyContactPhoneField" />
+            </div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Health</div>
+          <div class="field-group">
+            <div class="field">
+              <label for="primaryPhysicianField">Primary Physician</label>
+              <input type="text" id="primaryPhysicianField" />
+            </div>
+            <div class="field">
+              <label for="allergiesField">Known Allergies</label>
+              <input type="text" id="allergiesField" />
+            </div>
+            <div class="field">
+              <label for="chronicConditionsField">Chronic Conditions</label>
+              <div id="chronicConditionsMulti" class="multi-select"></div>
+              <input type="hidden" id="chronicConditionsField" />
+            </div>
+            <div class="field">
+              <label for="heightField">Height (e.g., 170 cm)</label>
+              <input type="text" id="heightField" />
+            </div>
+            <div class="field">
+              <label for="weightField">Weight (e.g., 65 kg)</label>
+              <input type="text" id="weightField" />
+            </div>
+            <div class="field">
+              <label for="bloodTypeField">Blood Type</label>
+              <select id="bloodTypeField">
+                <option value="">Select</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+                <option value="Unknown">Unknown</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <input type="email" id="emailField" placeholder="Email" required autocomplete="email" />
+      <input type="password" id="passwordField" placeholder="Password" required autocomplete="current-password" />
+      <button type="submit" id="submitBtn" class="register-btn">Login</button>
+    </form>
+    <div class="toggle-link" id="toggleLink">Don't have an account? Register</div>
+    <div class="message" id="authMessage"></div>
+  </div>
+  <script>
+    // Use firebase.auth() directly, do not redeclare 'auth'
+    const form = document.getElementById('authForm');
+    const nameField = document.getElementById('nameField');
+    const dobField = document.getElementById('dobField');
+    const genderField = document.getElementById('genderField');
+    const phoneField = document.getElementById('phoneField');
+    const addressField = document.getElementById('addressField');
+    const insuranceProviderField = document.getElementById('insuranceProviderField');
+    const insuranceMemberIdField = document.getElementById('insuranceMemberIdField');
+    const emergencyContactNameField = document.getElementById('emergencyContactNameField');
+    const emergencyContactPhoneField = document.getElementById('emergencyContactPhoneField');
+    const primaryPhysicianField = document.getElementById('primaryPhysicianField');
+    const allergiesField = document.getElementById('allergiesField');
+    const heightField = document.getElementById('heightField');
+    const weightField = document.getElementById('weightField');
+    const bloodTypeField = document.getElementById('bloodTypeField');
+    const emailField = document.getElementById('emailField');
+    const passwordField = document.getElementById('passwordField');
+    const submitBtn = document.getElementById('submitBtn');
+    const toggleLink = document.getElementById('toggleLink');
+    const authMessage = document.getElementById('authMessage');
+    const formTitle = document.getElementById('formTitle');
+
+    let isRegister = false;
+
+    toggleLink.onclick = () => {
+      isRegister = !isRegister;
+      if (isRegister) {
+        document.getElementById('registerFields').style.display = 'block';
+        submitBtn.textContent = 'Register';
+        formTitle.textContent = 'Register for OpenCare';
+        toggleLink.textContent = 'Already have an account? Login';
+        passwordField.setAttribute('autocomplete', 'new-password');
+      } else {
+        document.getElementById('registerFields').style.display = 'none';
+        submitBtn.textContent = 'Login';
+        formTitle.textContent = 'Login to OpenCare';
+        toggleLink.textContent = "Don't have an account? Register";
+        passwordField.setAttribute('autocomplete', 'current-password');
+      }
+      authMessage.textContent = '';
+    };
+
+    // Chronic conditions multi-select with autocomplete and synonym mapping
+    const chronicConditionsList = [
+      { canonical: 'Hypertension', synonyms: ['BP', 'HTN', 'High Blood Pressure', 'Hypertension'] },
+      { canonical: 'Diabetes', synonyms: ['DM', 'Diabetes Mellitus', 'Sugar', 'Diabetes'] },
+      { canonical: 'Asthma', synonyms: ['Asthma'] },
+      { canonical: 'COPD', synonyms: ['Chronic Obstructive Pulmonary Disease', 'COPD'] },
+      { canonical: 'Coronary Artery Disease', synonyms: ['CAD', 'Heart Disease', 'Coronary Artery Disease'] },
+      { canonical: 'Chronic Kidney Disease', synonyms: ['CKD', 'Kidney Disease', 'Chronic Kidney Disease'] },
+      { canonical: 'Hyperlipidemia', synonyms: ['High Cholesterol', 'Hyperlipidemia'] },
+      { canonical: 'Hypothyroidism', synonyms: ['Hypothyroidism'] },
+      { canonical: 'Depression', synonyms: ['Depression'] },
+      { canonical: 'Anxiety', synonyms: ['Anxiety'] },
+      { canonical: 'Arthritis', synonyms: ['Arthritis'] },
+      { canonical: 'Cancer', synonyms: ['Cancer'] },
+      { canonical: 'Obesity', synonyms: ['Obesity'] },
+      { canonical: 'Other', synonyms: [] }
+    ];
+    function canonicalizeCondition(input) {
+      const val = input.trim().toLowerCase();
+      for (const cond of chronicConditionsList) {
+        if (cond.synonyms.some(s => s.toLowerCase() === val)) return cond.canonical;
+      }
+      return input.trim();
+    }
+    function getConditionSuggestions(input, selected) {
+      const val = input.trim().toLowerCase();
+      if (!val) return chronicConditionsList.map(c => c.canonical).filter(c => !selected.includes(c));
+      return chronicConditionsList
+        .filter(c => c.synonyms.some(s => s.toLowerCase().includes(val)) || c.canonical.toLowerCase().includes(val))
+        .map(c => c.canonical)
+        .filter(c => !selected.includes(c));
+    }
+    function setupMultiSelect(id, hiddenId) {
+      const container = document.getElementById(id);
+      const hidden = document.getElementById(hiddenId);
+      let selected = [];
+      let input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = 'Type or select...';
+      input.autocomplete = 'off';
+      container.appendChild(input);
+      let suggestionsBox = null;
+      function render() {
+        container.innerHTML = '';
+        selected.forEach(val => {
+          const tag = document.createElement('span');
+          tag.className = 'multi-tag';
+          tag.textContent = val;
+          const remove = document.createElement('button');
+          remove.className = 'multi-tag-remove';
+          remove.innerHTML = '&times;';
+          remove.onclick = e => {
+            e.preventDefault();
+            selected = selected.filter(v => v !== val);
+            render();
+          };
+          tag.appendChild(remove);
+          container.appendChild(tag);
+        });
+        container.appendChild(input);
+        hidden.value = selected.join(', ');
+      }
+      function showSuggestions() {
+        if (suggestionsBox) suggestionsBox.remove();
+        suggestionsBox = document.createElement('div');
+        suggestionsBox.className = 'multi-suggestions';
+        const suggestions = getConditionSuggestions(input.value, selected);
+        suggestions.forEach((s, idx) => {
+          const item = document.createElement('div');
+          item.className = 'multi-suggestion';
+          item.textContent = s;
+          item.onclick = () => {
+            if (!selected.includes(s)) selected.push(s);
+            input.value = '';
+            render();
+            suggestionsBox.remove();
+            suggestionsBox = null;
+            input.focus();
+          };
+          suggestionsBox.appendChild(item);
+        });
+        if (input.value && !suggestions.includes(input.value)) {
+          // Allow free text
+          const item = document.createElement('div');
+          item.className = 'multi-suggestion';
+          item.textContent = 'Other: ' + input.value;
+          item.onclick = () => {
+            const canon = canonicalizeCondition(input.value);
+            if (!selected.includes(canon)) selected.push(canon);
+            input.value = '';
+            render();
+            suggestionsBox.remove();
+            suggestionsBox = null;
+            input.focus();
+          };
+          suggestionsBox.appendChild(item);
+        }
+        if (suggestions.length > 0 || input.value) {
+          // Append to the .field container, not the multi-select, to avoid clipping
+          container.parentElement.appendChild(suggestionsBox);
+        }
+      }
+      input.oninput = showSuggestions;
+      input.onfocus = showSuggestions;
+      input.onblur = () => setTimeout(() => { if (suggestionsBox) suggestionsBox.remove(); }, 150);
+      input.onkeydown = e => {
+        if (e.key === 'Enter' && input.value) {
+          const canon = canonicalizeCondition(input.value);
+          if (!selected.includes(canon)) selected.push(canon);
+          input.value = '';
+          render();
+          if (suggestionsBox) suggestionsBox.remove();
+          suggestionsBox = null;
+          e.preventDefault();
+        }
+      };
+      render();
+      return {
+        getSelected: () => selected,
+        setSelected: vals => { selected = vals; render(); }
+      };
+    }
+    let chronicMulti = null;
+    document.addEventListener('DOMContentLoaded', () => {
+      chronicMulti = setupMultiSelect('chronicConditionsMulti', 'chronicConditionsField');
+    });
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const email = emailField.value.trim();
+      const password = passwordField.value;
+      const name = nameField.value.trim();
+      const dob = dobField.value;
+      const gender = genderField.value;
+      const phone = phoneField.value.trim();
+      const address = addressField.value.trim();
+      const insuranceProvider = insuranceProviderField.value;
+      const insuranceMemberId = insuranceMemberIdField.value.trim();
+      const emergencyContactName = emergencyContactNameField.value.trim();
+      const emergencyContactPhone = emergencyContactPhoneField.value.trim();
+      const primaryPhysician = primaryPhysicianField.value.trim();
+      const allergies = allergiesField.value.trim();
+      const chronicConditions = chronicMulti.getSelected().map(canonicalizeCondition).join(', ');
+      const height = heightField.value.trim();
+      const weight = weightField.value.trim();
+      const bloodType = bloodTypeField.value;
+      authMessage.textContent = '';
+      authMessage.className = 'message';
+      try {
+        if (isRegister) {
+          // Register new user
+          const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+          await userCredential.user.updateProfile({ displayName: name });
+          // Save extra profile fields to Firestore
+          await firebaseClient.setUserProfile({
+            fullName: name,
+            dateOfBirth: dob,
+            gender,
+            phone,
+            address,
+            insuranceProvider,
+            insuranceMemberId,
+            emergencyContactName,
+            emergencyContactPhone,
+            primaryPhysician,
+            allergies,
+            chronicConditions,
+            height,
+            weight,
+            bloodType
+          });
+          authMessage.textContent = 'Registration successful! Redirecting...';
+          authMessage.classList.add('success');
+          setTimeout(() => { window.location.href = '/'; }, 1200);
+        } else {
+          // Login existing user
+          await firebase.auth().signInWithEmailAndPassword(email, password);
+          authMessage.textContent = 'Login successful! Redirecting...';
+          authMessage.classList.add('success');
+          setTimeout(() => { window.location.href = '/'; }, 1200);
+        }
+      } catch (err) {
+        authMessage.textContent = err.message;
+        authMessage.classList.add('error');
+      }
+    };
+
+    // Address autocomplete using Nominatim/OSM for registration
+    const regAddressInput = document.getElementById('addressField');
+    let regAddressTimeout = null;
+    let regAddressSuggestionsBox = null;
+    function showRegAddressSuggestions(suggestions) {
+      if (regAddressSuggestionsBox) regAddressSuggestionsBox.remove();
+      regAddressSuggestionsBox = document.createElement('div');
+      regAddressSuggestionsBox.className = 'address-suggestions';
+      suggestions.forEach(s => {
+        const item = document.createElement('div');
+        item.className = 'address-suggestion';
+        item.textContent = s.display_name;
+        item.onclick = () => {
+          regAddressInput.value = s.display_name;
+          regAddressSuggestionsBox.remove();
+          regAddressSuggestionsBox = null;
+        };
+        regAddressSuggestionsBox.appendChild(item);
+      });
+      if (suggestions.length > 0) {
+        regAddressInput.parentElement.appendChild(regAddressSuggestionsBox);
+      }
+    }
+    regAddressInput.addEventListener('input', function() {
+      if (regAddressSuggestionsBox) regAddressSuggestionsBox.remove();
+      if (regAddressTimeout) clearTimeout(regAddressTimeout);
+      const val = regAddressInput.value.trim();
+      if (!val) return;
+      regAddressTimeout = setTimeout(async () => {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&addressdetails=1&limit=5`);
+          const data = await res.json();
+          showRegAddressSuggestions(data);
+        } catch {}
+      }, 350);
+    });
+    regAddressInput.addEventListener('blur', function() {
+      setTimeout(() => { if (regAddressSuggestionsBox) regAddressSuggestionsBox.remove(); }, 150);
+    });
+  </script>
+</body>
+</html> 

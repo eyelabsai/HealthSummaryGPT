@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile - OpenCare</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e0e7ff 100%);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 600px;
+      margin: 3rem auto;
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(102,126,234,0.13);
+      padding: 2.5rem 2.5rem 2rem 2.5rem;
+      position: relative;
+    }
+    .profile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2.5rem;
+    }
+    .profile-header h2 {
+      margin: 0;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #333;
+    }
+    .back-btn {
+      background: #e9ecef;
+      color: #333;
+      border: none;
+      border-radius: 6px;
+      padding: 0.5rem 1.2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-left: 0.5rem;
+    }
+    .back-btn:hover {
+      background: #d1d5db;
+    }
+    .avatar {
+      width: 84px;
+      height: 84px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin: 0 auto 2rem auto;
+      box-shadow: 0 2px 12px rgba(102,126,234,0.13);
+      letter-spacing: 1px;
+      user-select: none;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 2.2rem;
+      margin-top: 1.5rem;
+    }
+    .section {
+      margin-bottom: 0.5rem;
+    }
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #667eea;
+      margin-bottom: 1.1rem;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .field-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem 2.5%;
+    }
+    .field {
+      flex: 1 1 47%;
+      min-width: 180px;
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 0.5rem;
+      position: relative;
+    }
+    .field label {
+      font-size: 0.98rem;
+      font-weight: 500;
+      color: #444;
+      margin-bottom: 0.4rem;
+      letter-spacing: 0.1px;
+    }
+    .field input, .field select {
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      border: 1px solid #ccd6f6;
+      font-size: 1.05rem;
+      background: #f8f9fa;
+      transition: border 0.2s, box-shadow 0.2s;
+    }
+    .field input:focus, .field select:focus {
+      border-color: #667eea;
+      outline: none;
+      box-shadow: 0 0 0 2px #e0e7ff;
+    }
+    .save-btn {
+      width: 100%;
+      padding: 1rem;
+      border-radius: 10px;
+      border: none;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      font-size: 1.2rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 1.5rem;
+      box-shadow: 0 2px 8px rgba(102,126,234,0.08);
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .save-btn:hover {
+      background: linear-gradient(90deg, #5a67d8 0%, #6b47b6 100%);
+      box-shadow: 0 4px 16px rgba(102,126,234,0.13);
+    }
+    .message {
+      text-align: center;
+      margin-top: 1.2rem;
+      font-size: 1.05rem;
+    }
+    .error { color: #dc3545; }
+    .success { color: #28a745; }
+    @media (max-width: 600px) {
+      .container {
+        max-width: 98vw;
+        padding: 1.2rem 0.5rem;
+      }
+      form {
+        gap: 1.2rem;
+      }
+      .field-group {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .field {
+        min-width: 0;
+      }
+    }
+    .multi-select {
+      min-height: 48px;
+      border: 1px solid #ccd6f6;
+      border-radius: 8px;
+      background: #f8f9fa;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.5rem 0.4rem 0.5rem;
+      cursor: text;
+    }
+    .multi-select input {
+      border: none;
+      background: transparent;
+      outline: none;
+      font-size: 1.05rem;
+      min-width: 120px;
+      flex: 1;
+      padding: 0.4rem 0;
+    }
+    .multi-tag {
+      background: #e0e7ff;
+      color: #4c51bf;
+      border-radius: 6px;
+      padding: 0.2rem 0.7rem 0.2rem 0.5rem;
+      font-size: 0.98rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .multi-tag-remove {
+      background: none;
+      border: none;
+      color: #667eea;
+      font-size: 1.1rem;
+      cursor: pointer;
+      margin-left: 0.2rem;
+    }
+    .multi-suggestions {
+      position: absolute;
+      left: 0;
+      top: 100%;
+      margin-top: 0.2rem;
+      background: #fff;
+      border: 1px solid #ccd6f6;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(102,126,234,0.08);
+      z-index: 10;
+      min-width: 220px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .multi-suggestion {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      font-size: 1.02rem;
+      color: #333;
+    }
+    .multi-suggestion:hover, .multi-suggestion.active {
+      background: #e0e7ff;
+      color: #4c51bf;
+    }
+    /* Address autocomplete suggestions */
+    .address-suggestions {
+      position: absolute;
+      left: 0;
+      top: 100%;
+      margin-top: 0.2rem;
+      background: #fff;
+      border: 1px solid #ccd6f6;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(102,126,234,0.08);
+      z-index: 10;
+      min-width: 220px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .address-suggestion {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      font-size: 1.02rem;
+      color: #333;
+    }
+    .address-suggestion:hover, .address-suggestion.active {
+      background: #e0e7ff;
+      color: #4c51bf;
+    }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+  <script src="/js/firebase-client.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="profile-header">
+      <h2>My Profile</h2>
+      <button class="back-btn" onclick="window.location.href='/'">← Dashboard</button>
+    </div>
+    <div class="avatar" id="profileAvatar">U</div>
+    <form id="profileForm">
+      <div class="section">
+        <div class="section-title">Personal Info</div>
+        <div class="field-group">
+          <div class="field">
+            <label for="fullName">Full Name</label>
+            <input type="text" id="fullName" required />
+          </div>
+          <div class="field">
+            <label for="dateOfBirth">Date of Birth</label>
+            <input type="date" id="dateOfBirth" />
+          </div>
+          <div class="field">
+            <label for="gender">Gender</label>
+            <select id="gender">
+              <option value="">Select</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+              <option value="Prefer not to say">Prefer not to say</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="phone">Phone Number</label>
+            <input type="tel" id="phone" autocomplete="tel" />
+          </div>
+          <div class="field" style="flex-basis:100%;">
+            <label for="address">Address</label>
+            <input type="text" id="address" autocomplete="street-address" />
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Insurance</div>
+        <div class="field-group">
+          <div class="field">
+            <label for="insuranceProvider">Insurance Provider</label>
+            <select id="insuranceProvider">
+              <option value="">Select</option>
+              <option value="Aetna">Aetna</option>
+              <option value="Blue Cross">Blue Cross</option>
+              <option value="Cigna">Cigna</option>
+              <option value="UnitedHealthcare">UnitedHealthcare</option>
+              <option value="Kaiser">Kaiser</option>
+              <option value="None">None</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="insuranceMemberId">Insurance Member ID</label>
+            <input type="text" id="insuranceMemberId" />
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Emergency</div>
+        <div class="field-group">
+          <div class="field">
+            <label for="emergencyContactName">Emergency Contact Name</label>
+            <input type="text" id="emergencyContactName" />
+          </div>
+          <div class="field">
+            <label for="emergencyContactPhone">Emergency Contact Phone</label>
+            <input type="tel" id="emergencyContactPhone" />
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Health</div>
+        <div class="field-group">
+          <div class="field">
+            <label for="primaryPhysician">Primary Physician</label>
+            <input type="text" id="primaryPhysician" />
+          </div>
+          <div class="field">
+            <label for="allergies">Known Allergies</label>
+            <input type="text" id="allergies" />
+          </div>
+          <div class="field">
+            <label for="chronicConditions">Chronic Conditions</label>
+            <div id="chronicConditionsMulti" class="multi-select"></div>
+            <input type="hidden" id="chronicConditions" />
+          </div>
+          <div class="field">
+            <label for="height">Height (e.g., 170 cm)</label>
+            <input type="text" id="height" />
+          </div>
+          <div class="field">
+            <label for="weight">Weight (e.g., 65 kg)</label>
+            <input type="text" id="weight" />
+          </div>
+          <div class="field">
+            <label for="bloodType">Blood Type</label>
+            <select id="bloodType">
+              <option value="">Select</option>
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+              <option value="O+">O+</option>
+              <option value="O-">O-</option>
+              <option value="Unknown">Unknown</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="save-btn">Save Profile</button>
+    </form>
+    <div class="message" id="profileMessage"></div>
+  </div>
+  <script>
+    function getInitials(name) {
+      if (!name) return 'U';
+      const parts = name.trim().split(' ');
+      if (parts.length === 1) return parts[0][0].toUpperCase();
+      return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+    }
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Require login
+      firebase.auth().onAuthStateChanged(async function(user) {
+        if (!user) {
+          window.location.href = '/login.html';
+          return;
+        }
+        // Load profile
+        try {
+          const profile = await firebaseClient.getUserProfile();
+          if (profile) {
+            document.getElementById('fullName').value = profile.fullName || '';
+            document.getElementById('dateOfBirth').value = profile.dateOfBirth || '';
+            document.getElementById('gender').value = profile.gender || '';
+            document.getElementById('phone').value = profile.phone || '';
+            document.getElementById('address').value = profile.address || '';
+            document.getElementById('insuranceProvider').value = profile.insuranceProvider || '';
+            document.getElementById('insuranceMemberId').value = profile.insuranceMemberId || '';
+            document.getElementById('emergencyContactName').value = profile.emergencyContactName || '';
+            document.getElementById('emergencyContactPhone').value = profile.emergencyContactPhone || '';
+            document.getElementById('primaryPhysician').value = profile.primaryPhysician || '';
+            document.getElementById('allergies').value = profile.allergies || '';
+            document.getElementById('chronicConditions').value = profile.chronicConditions || '';
+            document.getElementById('height').value = profile.height || '';
+            document.getElementById('weight').value = profile.weight || '';
+            document.getElementById('bloodType').value = profile.bloodType || '';
+            document.getElementById('profileAvatar').textContent = getInitials(profile.fullName);
+            if (profile.chronicConditions) {
+              const vals = profile.chronicConditions.split(',').map(s => canonicalizeCondition(s.trim())).filter(Boolean);
+              if (chronicMulti) chronicMulti.setSelected(vals);
+            }
+          } else {
+            document.getElementById('profileAvatar').textContent = getInitials(user.displayName || user.email);
+          }
+        } catch (err) {
+          document.getElementById('profileMessage').textContent = 'Error loading profile: ' + err.message;
+          document.getElementById('profileMessage').className = 'message error';
+        }
+      });
+      // Save profile
+      document.getElementById('profileForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const profileData = {
+          fullName: document.getElementById('fullName').value.trim(),
+          dateOfBirth: document.getElementById('dateOfBirth').value,
+          gender: document.getElementById('gender').value,
+          phone: document.getElementById('phone').value.trim(),
+          address: document.getElementById('address').value.trim(),
+          insuranceProvider: document.getElementById('insuranceProvider').value,
+          insuranceMemberId: document.getElementById('insuranceMemberId').value.trim(),
+          emergencyContactName: document.getElementById('emergencyContactName').value.trim(),
+          emergencyContactPhone: document.getElementById('emergencyContactPhone').value.trim(),
+          primaryPhysician: document.getElementById('primaryPhysician').value.trim(),
+          allergies: document.getElementById('allergies').value.trim(),
+          chronicConditions: chronicMulti.getSelected().map(canonicalizeCondition).join(', '),
+          height: document.getElementById('height').value.trim(),
+          weight: document.getElementById('weight').value.trim(),
+          bloodType: document.getElementById('bloodType').value
+        };
+        try {
+          await firebaseClient.setUserProfile(profileData);
+          document.getElementById('profileMessage').textContent = 'Profile saved!';
+          document.getElementById('profileMessage').className = 'message success';
+          document.getElementById('profileAvatar').textContent = getInitials(profileData.fullName);
+        } catch (err) {
+          document.getElementById('profileMessage').textContent = 'Error saving profile: ' + err.message;
+          document.getElementById('profileMessage').className = 'message error';
+        }
+      };
+    });
+    // Chronic conditions multi-select with autocomplete and synonym mapping
+    const chronicConditionsList = [
+      { canonical: 'Hypertension', synonyms: ['BP', 'HTN', 'High Blood Pressure', 'Hypertension'] },
+      { canonical: 'Diabetes', synonyms: ['DM', 'Diabetes Mellitus', 'Sugar', 'Diabetes'] },
+      { canonical: 'Asthma', synonyms: ['Asthma'] },
+      { canonical: 'COPD', synonyms: ['Chronic Obstructive Pulmonary Disease', 'COPD'] },
+      { canonical: 'Coronary Artery Disease', synonyms: ['CAD', 'Heart Disease', 'Coronary Artery Disease'] },
+      { canonical: 'Chronic Kidney Disease', synonyms: ['CKD', 'Kidney Disease', 'Chronic Kidney Disease'] },
+      { canonical: 'Hyperlipidemia', synonyms: ['High Cholesterol', 'Hyperlipidemia'] },
+      { canonical: 'Hypothyroidism', synonyms: ['Hypothyroidism'] },
+      { canonical: 'Depression', synonyms: ['Depression'] },
+      { canonical: 'Anxiety', synonyms: ['Anxiety'] },
+      { canonical: 'Arthritis', synonyms: ['Arthritis'] },
+      { canonical: 'Cancer', synonyms: ['Cancer'] },
+      { canonical: 'Obesity', synonyms: ['Obesity'] },
+      { canonical: 'Other', synonyms: [] }
+    ];
+    function canonicalizeCondition(input) {
+      const val = input.trim().toLowerCase();
+      for (const cond of chronicConditionsList) {
+        if (cond.synonyms.some(s => s.toLowerCase() === val)) return cond.canonical;
+      }
+      return input.trim();
+    }
+    function getConditionSuggestions(input, selected) {
+      const val = input.trim().toLowerCase();
+      if (!val) return chronicConditionsList.map(c => c.canonical).filter(c => !selected.includes(c));
+      return chronicConditionsList
+        .filter(c => c.synonyms.some(s => s.toLowerCase().includes(val)) || c.canonical.toLowerCase().includes(val))
+        .map(c => c.canonical)
+        .filter(c => !selected.includes(c));
+    }
+    function setupMultiSelect(id, hiddenId) {
+      const container = document.getElementById(id);
+      const hidden = document.getElementById(hiddenId);
+      let selected = [];
+      let input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = 'Type or select...';
+      input.autocomplete = 'off';
+      container.appendChild(input);
+      let suggestionsBox = null;
+      function render() {
+        container.innerHTML = '';
+        selected.forEach(val => {
+          const tag = document.createElement('span');
+          tag.className = 'multi-tag';
+          tag.textContent = val;
+          const remove = document.createElement('button');
+          remove.className = 'multi-tag-remove';
+          remove.innerHTML = '&times;';
+          remove.onclick = e => {
+            e.preventDefault();
+            selected = selected.filter(v => v !== val);
+            render();
+          };
+          tag.appendChild(remove);
+          container.appendChild(tag);
+        });
+        container.appendChild(input);
+        hidden.value = selected.join(', ');
+      }
+      function showSuggestions() {
+        if (suggestionsBox) suggestionsBox.remove();
+        suggestionsBox = document.createElement('div');
+        suggestionsBox.className = 'multi-suggestions';
+        const suggestions = getConditionSuggestions(input.value, selected);
+        suggestions.forEach((s, idx) => {
+          const item = document.createElement('div');
+          item.className = 'multi-suggestion';
+          item.textContent = s;
+          item.onclick = () => {
+            if (!selected.includes(s)) selected.push(s);
+            input.value = '';
+            render();
+            suggestionsBox.remove();
+            suggestionsBox = null;
+            input.focus();
+          };
+          suggestionsBox.appendChild(item);
+        });
+        if (input.value && !suggestions.includes(input.value)) {
+          // Allow free text
+          const item = document.createElement('div');
+          item.className = 'multi-suggestion';
+          item.textContent = 'Other: ' + input.value;
+          item.onclick = () => {
+            const canon = canonicalizeCondition(input.value);
+            if (!selected.includes(canon)) selected.push(canon);
+            input.value = '';
+            render();
+            suggestionsBox.remove();
+            suggestionsBox = null;
+            input.focus();
+          };
+          suggestionsBox.appendChild(item);
+        }
+        if (suggestions.length > 0 || input.value) {
+          container.appendChild(suggestionsBox);
+        }
+      }
+      input.oninput = showSuggestions;
+      input.onfocus = showSuggestions;
+      input.onblur = () => setTimeout(() => { if (suggestionsBox) suggestionsBox.remove(); }, 150);
+      input.onkeydown = e => {
+        if (e.key === 'Enter' && input.value) {
+          const canon = canonicalizeCondition(input.value);
+          if (!selected.includes(canon)) selected.push(canon);
+          input.value = '';
+          render();
+          if (suggestionsBox) suggestionsBox.remove();
+          suggestionsBox = null;
+          e.preventDefault();
+        }
+      };
+      render();
+      return {
+        getSelected: () => selected,
+        setSelected: vals => { selected = vals; render(); }
+      };
+    }
+    let chronicMulti = null;
+    document.addEventListener('DOMContentLoaded', () => {
+      chronicMulti = setupMultiSelect('chronicConditionsMulti', 'chronicConditions');
+    });
+    // Address autocomplete using Nominatim/OSM
+    const addressInput = document.getElementById('address');
+    let addressTimeout = null;
+    let addressSuggestionsBox = null;
+    function showAddressSuggestions(suggestions) {
+      if (addressSuggestionsBox) addressSuggestionsBox.remove();
+      addressSuggestionsBox = document.createElement('div');
+      addressSuggestionsBox.className = 'address-suggestions';
+      suggestions.forEach(s => {
+        const item = document.createElement('div');
+        item.className = 'address-suggestion';
+        item.textContent = s.display_name;
+        item.onclick = () => {
+          addressInput.value = s.display_name;
+          addressSuggestionsBox.remove();
+          addressSuggestionsBox = null;
+        };
+        addressSuggestionsBox.appendChild(item);
+      });
+      if (suggestions.length > 0) {
+        addressInput.parentElement.appendChild(addressSuggestionsBox);
+      }
+    }
+    addressInput.addEventListener('input', function() {
+      if (addressSuggestionsBox) addressSuggestionsBox.remove();
+      if (addressTimeout) clearTimeout(addressTimeout);
+      const val = addressInput.value.trim();
+      if (!val) return;
+      addressTimeout = setTimeout(async () => {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&addressdetails=1&limit=5`);
+          const data = await res.json();
+          showAddressSuggestions(data);
+        } catch {}
+      }, 350);
+    });
+    addressInput.addEventListener('blur', function() {
+      setTimeout(() => { if (addressSuggestionsBox) addressSuggestionsBox.remove(); }, 150);
+    });
+  </script>
+</body>
+</html> 
