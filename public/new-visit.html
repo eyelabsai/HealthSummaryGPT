@@ -579,7 +579,7 @@
           id: Date.now().toString(),
           summary: summaryEl.value || 'No summary.',
           tldr: tldrEl.value || 'No TLDR.',
-          specialty: specialtyEl.value || 'Uncategorized',
+          specialty: document.getElementById('specialty').value || 'Uncategorized',
           date: dateEl.value || new Date().toISOString().split('T')[0]
         };
         
@@ -592,8 +592,82 @@
     });
 
     // Add event listeners for medication verification
-    confirmMedsBtn.addEventListener('click', () => {
-      saveVisitAndMedications(currentMedications);
+    confirmMedsBtn.addEventListener('click', async () => {
+      // Remove empty medications
+      const medsToSave = currentMedications.filter(med => med.name && med.name.trim() !== '');
+      // Fetch current active medications from Firestore
+      let existingMeds = [];
+      try {
+        existingMeds = await firebaseClient.getUserMedications();
+      } catch (err) {
+        statusEl.textContent = 'Error fetching current medications: ' + err.message;
+        statusEl.className = 'status error';
+        return;
+      }
+      // Find conflicts
+      const conflicts = [];
+      const medsToActuallySave = [];
+      medsToSave.forEach(newMed => {
+        const match = existingMeds.find(
+          m => m.name && newMed.name && m.name.toLowerCase() === newMed.name.toLowerCase()
+        );
+        if (match) {
+          conflicts.push({ existing: match, incoming: newMed });
+        } else {
+          medsToActuallySave.push(newMed);
+        }
+      });
+      if (conflicts.length > 0) {
+        // Show conflict UI
+        let conflictHtml = '<div style="color:#dc3545;font-weight:600;margin-bottom:1rem;">Medication conflict detected! Please clarify:</div>';
+        conflictHtml += conflicts.map((c, idx) => `
+          <div style="border:1px solid #ffc107; border-radius:6px; padding:1rem; margin-bottom:1rem; background:#fffbe6;">
+            <div><b>${c.incoming.name}</b> already exists in your current medications.</div>
+            <div style="margin-top:0.5rem;">
+              <b>Existing:</b> ${c.existing.dosage || ''} ${c.existing.frequency || ''} ${c.existing.route || ''}
+              <br/>
+              <b>New:</b> ${c.incoming.dosage || ''} ${c.incoming.frequency || ''} ${c.incoming.route || ''}
+            </div>
+            <div style="margin-top:0.5rem;">
+              <button type="button" class="conflict-btn" data-action="keep" data-idx="${idx}" style="margin-right:0.5rem;">Keep Existing</button>
+              <button type="button" class="conflict-btn" data-action="replace" data-idx="${idx}" style="margin-right:0.5rem;">Replace with New</button>
+              <button type="button" class="conflict-btn" data-action="both" data-idx="${idx}">Keep Both</button>
+            </div>
+          </div>
+        `).join('');
+        medicationList.innerHTML = conflictHtml;
+        // Handle user choice
+        const userChoices = Array(conflicts.length).fill(null);
+        medicationList.querySelectorAll('.conflict-btn').forEach(btn => {
+          btn.addEventListener('click', e => {
+            const idx = +btn.dataset.idx;
+            const action = btn.dataset.action;
+            userChoices[idx] = action;
+            // If all resolved, proceed
+            if (userChoices.every(choice => choice)) {
+              // Build final list
+              const finalMeds = [...medsToActuallySave];
+              conflicts.forEach((c, i) => {
+                if (userChoices[i] === 'replace') {
+                  // Discontinue existing, add new
+                  firebaseClient.discontinueMedication(c.existing.id);
+                  finalMeds.push(c.incoming);
+                } else if (userChoices[i] === 'both') {
+                  finalMeds.push(c.incoming);
+                } // else keep existing (do nothing)
+              });
+              saveVisitAndMedications(finalMeds);
+              medicationVerification.style.display = 'none';
+              finishVisitBtn.style.display = 'inline-block';
+            } else {
+              // Optionally, highlight unresolved
+            }
+          });
+        });
+        return;
+      }
+      // No conflicts, proceed as normal
+      saveVisitAndMedications(medsToActuallySave);
       medicationVerification.style.display = 'none';
       finishVisitBtn.style.display = 'inline-block';
     });
@@ -622,7 +696,7 @@
       return verifiedMeds;
     }
 
-    // Function to display medication verification interface
+        // Function to display medication verification interface
     function displayMedicationVerification(medications) {
       if (!medications || medications.length === 0) {
         // No medications to verify, proceed directly
@@ -631,63 +705,70 @@
         return;
       }
       
-      const verifiedMeds = verifyMedications(medications);
-      currentMedications = verifiedMeds;
+      currentMedications = medications.map(med => ({ ...med })); // Deep copy
       
-      const existingCount = verifiedMeds.filter(med => med.isExisting).length;
-      const newCount = verifiedMeds.filter(med => !med.isExisting).length;
-      
-      let summaryText = '';
-      if (existingCount > 0 && newCount > 0) {
-        summaryText = `<p style="margin-bottom: 1rem; color: #856404; font-weight: 500;">Found ${newCount} new medication(s) and ${existingCount} already prescribed medication(s).</p>`;
-      } else if (existingCount > 0) {
-        summaryText = `<p style="margin-bottom: 1rem; color: #856404; font-weight: 500;">All ${existingCount} medication(s) are already prescribed.</p>`;
-      } else {
-        summaryText = `<p style="margin-bottom: 1rem; color: #155724; font-weight: 500;">Found ${newCount} new medication(s) to add.</p>`;
-      }
-      
-      const medicationHtml = verifiedMeds.map(med => {
-        const statusClass = med.isExisting ? 'status-existing' : 'status-new';
-        const statusText = med.isExisting ? 'Already Prescribed' : 'New Medication';
+      function renderMedList() {
+        const existingCount = currentMedications.filter(med => med.isExisting).length;
+        const newCount = currentMedications.filter(med => !med.isExisting).length;
         
-        const details = [];
-        if (med.dosage) details.push(`Dosage: ${med.dosage}`);
-        if (med.frequency) details.push(`Frequency: ${med.frequency}`);
-        if (med.timing) details.push(`Timing: ${med.timing}`);
-        if (med.route) details.push(`Route: ${med.route}`);
-        if (med.laterality) details.push(`Eye: ${med.laterality}`);
-        if (med.duration) details.push(`Duration: ${med.duration}`);
-        
-        const detailsText = details.length > 0 ? details.join(' • ') : 'No specific details';
-        
-        let existingInfo = '';
-        if (med.isExisting && med.existingMed) {
-          const existingDetails = [];
-          if (med.existingMed.dosage) existingDetails.push(`Dosage: ${med.existingMed.dosage}`);
-          if (med.existingMed.frequency) existingDetails.push(`Frequency: ${med.existingMed.frequency}`);
-          if (med.existingMed.timing) existingDetails.push(`Timing: ${med.existingMed.timing}`);
-          if (med.existingMed.route) existingDetails.push(`Route: ${med.existingMed.route}`);
-          if (med.existingMed.laterality) existingDetails.push(`Eye: ${med.existingMed.laterality}`);
-          if (med.existingMed.duration) existingDetails.push(`Duration: ${med.existingMed.duration}`);
-          
-          existingInfo = `
-            <div style="margin-top: 0.5rem; padding: 0.5rem; background: #f8f9fa; border-radius: 4px; font-size: 0.85rem;">
-              <strong>Current prescription:</strong> ${existingDetails.join(' • ') || 'No details available'}
-            </div>
-          `;
+        let summaryText = '';
+        if (existingCount > 0 && newCount > 0) {
+          summaryText = `<p style="margin-bottom: 1rem; color: #856404; font-weight: 500;">Found ${newCount} new medication(s) and ${existingCount} already prescribed medication(s).</p>`;
+        } else if (existingCount > 0) {
+          summaryText = `<p style="margin-bottom: 1rem; color: #856404; font-weight: 500;">All ${existingCount} medication(s) are already prescribed.</p>`;
+        } else {
+          summaryText = `<p style="margin-bottom: 1rem; color: #155724; font-weight: 500;">Found ${newCount} new medication(s) to add.</p>`;
         }
         
-        return `
-          <div class="medication-item-verify">
-            <div class="medication-name">${med.name}</div>
-            <div class="medication-status ${statusClass}">${statusText}</div>
-            <div class="medication-details">${detailsText}</div>
-            ${existingInfo}
+        medicationList.innerHTML = summaryText + currentMedications.map((med, idx) => `
+          <div class="medication-item-verify" data-idx="${idx}">
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+              <input type="text" class="med-input" data-field="name" value="${med.name || ''}" placeholder="Medication name" style="flex:2; min-width: 120px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
+              <input type="text" class="med-input" data-field="dosage" value="${med.dosage || ''}" placeholder="Dosage" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
+              <input type="text" class="med-input" data-field="frequency" value="${med.frequency || ''}" placeholder="Frequency" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
+              <input type="text" class="med-input" data-field="timing" value="${med.timing || ''}" placeholder="Timing" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
+              <input type="text" class="med-input" data-field="route" value="${med.route || ''}" placeholder="Route" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
+              <input type="text" class="med-input" data-field="laterality" value="${med.laterality || ''}" placeholder="Eye/Side" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
+              <input type="text" class="med-input" data-field="duration" value="${med.duration || ''}" placeholder="Duration" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
+              <button type="button" class="remove-med-btn" data-idx="${idx}" style="margin-left:0.5rem; padding: 0.5rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑</button>
+            </div>
+            <textarea class="med-input" data-field="fullInstructions" placeholder="Full instructions" style="width:100%; margin-top:0.5rem; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px; min-height: 60px; resize: vertical;">${med.fullInstructions || ''}</textarea>
           </div>
+        `).join('') + `
+          <button type="button" id="addMedicationBtn" class="btn btn-secondary" style="margin-top:1rem;">+ Add Medication</button>
         `;
-      }).join('');
+        
+        // Add event listeners for input changes
+        medicationList.querySelectorAll('.med-input').forEach(input => {
+          input.addEventListener('input', e => {
+            const idx = +input.closest('.medication-item-verify').dataset.idx;
+            const field = input.dataset.field;
+            currentMedications[idx][field] = input.value;
+          });
+        });
+        
+        // Remove medication
+        medicationList.querySelectorAll('.remove-med-btn').forEach(btn => {
+          btn.addEventListener('click', e => {
+            const idx = +btn.dataset.idx;
+            currentMedications.splice(idx, 1);
+            renderMedList();
+          });
+        });
+        
+        // Add medication
+        const addBtn = document.getElementById('addMedicationBtn');
+        if (addBtn) {
+          addBtn.addEventListener('click', () => {
+            currentMedications.push({
+              name: '', dosage: '', frequency: '', timing: '', route: '', laterality: '', duration: '', fullInstructions: ''
+            });
+            renderMedList();
+          });
+        }
+      }
       
-      medicationList.innerHTML = summaryText + medicationHtml;
+      renderMedList();
       medicationVerification.style.display = 'block';
       finishVisitBtn.style.display = 'none';
     }
@@ -726,7 +807,7 @@
       // Prepare visit data
       const newVisit = {
         date: dateEl.value || new Date().toISOString().split('T')[0],
-        specialty: specialtyEl.value || 'Uncategorized',
+        specialty: document.getElementById('specialty').value || 'Uncategorized',
         summary: summaryEl.value || 'No summary.',
         tldr: tldrEl.value || 'No TLDR.',
         transcript: transcriptEl.value || '',
