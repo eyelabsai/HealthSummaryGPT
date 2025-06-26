@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { userService, visitService, medicationService } from './services/firebase-service.js';
 import { Readable } from 'stream';
+import mime from 'mime-types';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -57,45 +58,41 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'No audio file provided.' });
     }
 
-    console.log(`Processing audio file: ${req.file.originalname}, size: ${req.file.size} bytes`);
+    console.log(`Processing audio: ${req.file.originalname} (${req.file.size} bytes)`);
 
-    // Check file size
     if (req.file.size > 50 * 1024 * 1024) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Audio file too large. Maximum size is 50MB.' 
-      });
+      return res.status(400).json({ success: false, error: 'Audio file too large (max 50 MB).' });
     }
 
-    // Send the buffer as a Readable stream with a .path property to OpenAI
-    console.log('Sending to OpenAI for transcription...');
-    const buffer = req.file.buffer;
-    const stream = Readable.from(buffer);
-    stream.path = req.file.originalname || "audio.webm";
-    const transcriptionResponse = await openai.audio.transcriptions.create({
-      file: stream,
-      model: "whisper-1",
-      response_format: "json",
-      temperature: 0.3, // Lower temperature for more consistent results
-      language: "en" // Specify language for better accuracy
+    // ▸ Whisper needs the filename extension to determine the codec
+    const ext      = mime.extension(req.file.mimetype) || 'webm';   // e.g. "webm", "wav", "mp3"
+    const filename = `recording.${ext}`;
+
+    // Convert buffer → Readable stream & attach .path
+    const stream = Readable.from(req.file.buffer);
+    stream.path  = filename;
+
+    console.log('Sending to OpenAI for transcription…');
+    const { text } = await openai.audio.transcriptions.create({
+      file   : stream,
+      model  : 'whisper-1',
+      language: 'en',
+      temperature: 0.3,
+      response_format: 'json'
     });
 
-    const transcript = transcriptionResponse.text;
-    console.log(`Transcription completed. Length: ${transcript.length} characters`);
-    
-    return res.json({ success: true, transcript });
+    console.log(`Transcription done – ${text.length} chars`);
+    res.json({ success: true, transcript: text });
+
   } catch (err) {
     console.error('Transcription error:', err);
-    
-    // Provide more specific error messages
-    let errorMessage = 'Transcription failed.';
-    if (err.message.includes('timeout')) {
-      errorMessage = 'Audio processing timed out. Please try a shorter recording.';
-    } else if (err.message.includes('file size')) {
-      errorMessage = 'Audio file is too large. Please try a shorter recording.';
-    }
-    
-    return res.status(500).json({ success: false, error: errorMessage });
+
+    const msg =
+      err.message.includes('timeout') ? 'Audio processing timed out.'
+    : err.message.includes('too large') ? 'Audio file is too large.'
+    : 'Transcription failed.';
+
+    res.status(500).json({ success: false, error: msg });
   }
 });
 
@@ -195,11 +192,7 @@ ${transcript}`
     let { summary, specialty, date, tldr, medications } = parsed;
 
     // Always use today's date for new visits (since they're being recorded now)
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    date = `${yyyy}-${mm}-${dd}`;
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
     console.log('Setting visit date to today:', date);
 
