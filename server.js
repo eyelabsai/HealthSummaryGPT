@@ -19,7 +19,7 @@ const app = express();
 
 // Configure multer with file size limits for longer recordings
 const upload = multer({ 
-  dest: 'uploads/',
+  storage: multer.memoryStorage(), // Use in-memory storage
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB limit for longer recordings
     files: 1
@@ -51,10 +51,6 @@ function cleanupFiles(...filePaths) {
 
 // 1) Transcription endpoint
 app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
-  const audioPath = req.file?.path;
-  const webmPath = audioPath ? audioPath + '.webm' : null;
-  const wavPath = audioPath ? audioPath + '.wav' : null;
-  
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No audio file provided.' });
@@ -64,27 +60,16 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
 
     // Check file size
     if (req.file.size > 50 * 1024 * 1024) {
-      cleanupFiles(audioPath);
       return res.status(400).json({ 
         success: false, 
         error: 'Audio file too large. Maximum size is 50MB.' 
       });
     }
 
-    // Rename to .webm
-    renameSync(audioPath, webmPath);
-
-    // Convert to .wav using ffmpeg with better settings for longer recordings
-    console.log('Converting audio to WAV format...');
-    execSync(`ffmpeg -y -i "${webmPath}" -acodec pcm_s16le -ar 16000 -ac 1 "${wavPath}"`, {
-      timeout: 30000 // 30 second timeout for conversion
-    });
-
-    const audioStream = createReadStream(wavPath);
-
+    // Send the buffer directly to OpenAI
     console.log('Sending to OpenAI for transcription...');
     const transcriptionResponse = await openai.audio.transcriptions.create({
-      file: audioStream,
+      file: req.file.buffer,
       model: "whisper-1",
       response_format: "json",
       temperature: 0.3, // Lower temperature for more consistent results
@@ -94,15 +79,9 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     const transcript = transcriptionResponse.text;
     console.log(`Transcription completed. Length: ${transcript.length} characters`);
     
-    // Clean up temporary files
-    cleanupFiles(webmPath, wavPath);
-    
     return res.json({ success: true, transcript });
   } catch (err) {
     console.error('Transcription error:', err);
-    
-    // Clean up temporary files on error
-    cleanupFiles(audioPath, webmPath, wavPath);
     
     // Provide more specific error messages
     let errorMessage = 'Transcription failed.';
@@ -110,8 +89,6 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
       errorMessage = 'Audio processing timed out. Please try a shorter recording.';
     } else if (err.message.includes('file size')) {
       errorMessage = 'Audio file is too large. Please try a shorter recording.';
-    } else if (err.message.includes('ffmpeg')) {
-      errorMessage = 'Audio format conversion failed. Please try again.';
     }
     
     return res.status(500).json({ success: false, error: errorMessage });
