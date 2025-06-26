@@ -64,23 +64,20 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'Audio file too large (max 50 MB).' });
     }
 
-    // ▸ Whisper needs the filename extension to determine the codec
-    const ext      = mime.extension(req.file.mimetype) || 'webm';   // e.g. "webm", "wav", "mp3"
-    const filename = `recording.${ext}`;
-
-    // Convert buffer → Readable stream & attach .path
-    const stream = Readable.from(req.file.buffer);
-    stream.path  = filename;
-
-    console.log('Sending to OpenAI for transcription…');
+    // Log the browser mimetype for debugging
+    console.log('Browser mimetype:', req.file.mimetype);
+    const ext = mime.extension(req.file.mimetype) || 'webm';
+    const fileForOpenAI = {
+      data: req.file.buffer,
+      name: `recording.${ext}`
+    };
     const { text } = await openai.audio.transcriptions.create({
-      file   : stream,
-      model  : 'whisper-1',
+      file: fileForOpenAI,
+      model: 'whisper-1',
       language: 'en',
       temperature: 0.3,
       response_format: 'json'
     });
-
     console.log(`Transcription done – ${text.length} chars`);
     res.json({ success: true, transcript: text });
 
