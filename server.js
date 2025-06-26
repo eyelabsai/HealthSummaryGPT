@@ -10,6 +10,7 @@ import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { userService, visitService, medicationService } from './services/firebase-service.js';
+import { Readable } from 'stream';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -66,12 +67,13 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
       });
     }
 
-    // Send the buffer directly to OpenAI
+    // Send the buffer as a Readable stream with a .path property to OpenAI
     console.log('Sending to OpenAI for transcription...');
     const buffer = req.file.buffer;
-    buffer.name = req.file.originalname || "audio.webm";
+    const stream = Readable.from(buffer);
+    stream.path = req.file.originalname || "audio.webm";
     const transcriptionResponse = await openai.audio.transcriptions.create({
-      file: buffer,
+      file: stream,
       model: "whisper-1",
       response_format: "json",
       temperature: 0.3, // Lower temperature for more consistent results
