@@ -556,8 +556,10 @@
           tldrEl.value = data.tldr || '';
           populateSpecialtyDropdown(data.specialty || '');
           specialtyEl.value = data.specialty || '';
-          // If date is missing or 'Not specified', set to today
-          let summaryDate = data.date && data.date.trim().toLowerCase() !== 'not specified' ? data.date : new Date().toISOString().split('T')[0];
+          // If date is missing, 'Not specified', or 'TODAY', set to today
+          let summaryDate = data.date && data.date.trim().toLowerCase() !== 'not specified' && data.date.trim().toLowerCase() !== 'today'
+            ? data.date
+            : new Date().toISOString().split('T')[0];
           dateEl.value = summaryDate;
           document.getElementById('specialtyHelper').textContent = data.specialty ? `AI suggested: ${data.specialty}. You can change this if needed.` : '';
           // Use medication verification instead of direct saving
@@ -837,7 +839,7 @@
       }
       const userId = user.uid;
       // Prepare visit data
-      let visitDate = dateEl.value && dateEl.value.trim() !== '' && dateEl.value.trim().toLowerCase() !== 'not specified'
+      let visitDate = dateEl.value && dateEl.value.trim() !== '' && dateEl.value.trim().toLowerCase() !== 'not specified' && dateEl.value.trim().toLowerCase() !== 'today'
         ? dateEl.value.trim()
         : new Date().toISOString().split('T')[0];
       const specialtyValue = document.getElementById('specialty').value || 'Uncategorized';
