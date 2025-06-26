@@ -402,7 +402,6 @@
           </div>
         </div>
         <button type="submit" id="submitBtn" class="register-btn">Login</button>
-        <button type="button" onclick="testLogin()" style="margin-top: 1rem; background: #28a745;">Test Login</button>
       </div>
       
       <!-- Registration Steps -->
@@ -931,24 +930,6 @@
     // Initialize form
     initForm();
     
-    // Test Firebase connection
-    async function testFirebase() {
-      try {
-        console.log('Testing Firebase connection...');
-        const auth = firebase.auth();
-        console.log('Firebase auth available:', !!auth);
-        const firestore = firebase.firestore();
-        console.log('Firebase firestore available:', !!firestore);
-        return true;
-      } catch (error) {
-        console.error('Firebase test failed:', error);
-        return false;
-      }
-    }
-    
-    // Run Firebase test on page load
-    testFirebase();
-    
     // Complete registration function
     async function completeRegistration() {
       console.log('=== COMPLETE REGISTRATION START ===');
@@ -1024,36 +1005,6 @@
       }
     }
     
-    // Test login function for debugging
-    async function testLogin() {
-      try {
-        console.log('=== TEST LOGIN START ===');
-        console.log('Firebase available:', !!firebase);
-        console.log('Firebase auth available:', !!firebase.auth);
-        console.log('Login email:', loginEmailField.value);
-        console.log('Login password length:', loginPasswordField.value.length);
-        
-        if (!loginEmailField.value || !loginPasswordField.value) {
-          console.log('Missing email or password');
-          return;
-        }
-        
-        const result = await firebase.auth().signInWithEmailAndPassword(loginEmailField.value, loginPasswordField.value);
-        console.log('Login successful:', result);
-        console.log('User ID:', result.user.uid);
-        console.log('=== TEST LOGIN END ===');
-        
-        // Redirect to index
-        window.location.href = '/';
-      } catch (error) {
-        console.error('=== TEST LOGIN ERROR ===');
-        console.error('Error code:', error.code);
-        console.error('Error message:', error.message);
-        console.error('Full error:', error);
-        console.error('=== TEST LOGIN ERROR END ===');
-      }
-    }
-    
     // Check Firebase initialization
     function checkFirebase() {
       if (!firebase || !firebase.auth) {
@@ -1068,15 +1019,16 @@
     // Form submission
     form.onsubmit = async (e) => {
       e.preventDefault();
-      
       // Check Firebase initialization
       if (!checkFirebase()) {
         return;
       }
-      
       if (!isRegister) {
         // Login logic
         try {
+          submitBtn.disabled = true;
+          const originalText = submitBtn.textContent;
+          submitBtn.textContent = 'Logging in...';
           console.log('Attempting login with:', loginEmailField.value);
           if (!loginEmailField.value || !loginPasswordField.value) {
             throw new Error('Please enter both email and password');
@@ -1088,6 +1040,8 @@
           console.error('Login error:', error);
           authMessage.textContent = error.message;
           authMessage.className = 'message error';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Login';
         }
         return;
       }
