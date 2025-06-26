@@ -790,6 +790,18 @@
       // Setup navigation button handlers
       prevBtn.onclick = prevStep;
       nextBtn.onclick = nextStep;
+      
+      // Populate insurance provider dropdown
+      const insuranceOptions = [
+        '', 'Aetna', 'Blue Cross', 'Cigna', 'UnitedHealthcare', 'Kaiser', 'None', 'Other'
+      ];
+      insuranceProviderField.innerHTML = '';
+      insuranceOptions.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt;
+        option.textContent = opt === '' ? 'Select' : opt;
+        insuranceProviderField.appendChild(option);
+      });
     }
     
     // Setup condition buttons
