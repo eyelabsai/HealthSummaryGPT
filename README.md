@@ -1,132 +1,139 @@
-# WhisperTranscription
+# OpenCare - Health Visit Tracker
 
-A minimal Node.js service that records audio via the browser, transcribes speech using OpenAI’s `gpt-4o-mini-transcribe`, then—on demand—summarises the transcript with `gpt-4o-mini`.  
+A comprehensive health management application that allows users to record, transcribe, and analyze their medical visits using AI-powered transcription and summarization.
 
-## Overview  
-This application provides:  
-1. A simple front end (HTML/JavaScript) that captures microphone input and uploads it as a WebM blob.  
-2. An Express-powered back end that:  
-   - Converts the browser-generated WebM to WAV (via `ffmpeg`).  
-   - Streams the resulting WAV to OpenAI’s transcription endpoint.  
-   - Returns the transcript to the browser.  
-   - Accepts a transcript and returns a concise summary via the LLM.  
+## Features
 
-You can record your voice, obtain a transcription, then click “Summarise” to receive a condensed version.  
+- **AI-Powered Transcription**: Convert audio recordings of medical visits to text using OpenAI Whisper
+- **Intelligent Summarization**: Extract key medical information, medications, and visit details
+- **Health Assistant**: AI-powered chat interface to query and analyze health data
+- **Medication Management**: Track current medications with detailed instructions
+- **Visit History**: Comprehensive visit tracking with specialty categorization
+- **User Profiles**: Complete health profiles with chronic conditions and demographics
+- **Firebase Integration**: Real-time cloud storage with user authentication
 
-## Prerequisites  
-- **Node.js** (v16 or later) and **npm** installed.  
-- **ffmpeg** installed on your system (Homebrew, apt, etc.), so that the WebM→WAV conversion works.  
-- An **OpenAI API key** with access to the `gpt-4o-mini-transcribe` and `gpt-4o-mini` models.  
+## Tech Stack
 
-## Installation  
+- **Frontend**: HTML, CSS, JavaScript
+- **Backend**: Node.js, Express.js
+- **AI Services**: OpenAI GPT-4o, Whisper
+- **Database**: Firebase Firestore
+- **Authentication**: Firebase Auth
+- **Deployment**: Vercel
 
-1. **Clone the repository** (or copy files) into a local folder:  
+## Local Development
+
+1. **Clone the repository**
    ```bash
-   git clone https://github.com/eyelabsai/WhisperTranscription.git
-   cd WhisperTranscription
+   git clone <repository-url>
+   cd HealthSummaryGPT
    ```
 
-2.	Install Node.js dependencies:
-```
-npm install
-```
-3.	Install ffmpeg (if not already):
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-macOS (Homebrew):
-```
-brew install ffmpeg
-```
+3. **Set up environment variables**
+   Create a `.env` file in the root directory:
+   ```env
+   OPENAI_API_KEY=your_openai_api_key
+   ```
 
-Ubuntu/Debian:
-```
-sudo apt update
-sudo apt install ffmpeg
-```
+4. **Configure Firebase**
+   - Set up a Firebase project
+   - Add your Firebase config to `firebase-config.js`
+   - Enable Authentication and Firestore
 
-Confirm installation with:
-```
-ffmpeg -version
-```
+5. **Start the development server**
+   ```bash
+   npm start
+   ```
 
-4. Configure environment variables:
-Create a file named `.env` in the project root with:
+6. **Access the application**
+   Open `http://localhost:3000` in your browser
 
-```
-OPENAI_API_KEY=sk-YOUR_OPENAI_KEY_HERE
-```
+## Vercel Deployment
 
-Ensure that the key is valid and grants access to both gpt-4o-mini-transcribe and gpt-4o-mini.
+### Prerequisites
+- Vercel account
+- Firebase project
+- OpenAI API key
 
+### Deployment Steps
+
+1. **Install Vercel CLI**
+   ```bash
+   npm i -g vercel
+   ```
+
+2. **Deploy to Vercel**
+   ```bash
+   vercel
+   ```
+
+3. **Set environment variables**
+   In Vercel dashboard → Project Settings → Environment Variables:
+   ```
+   OPENAI_API_KEY=your_openai_api_key
+   ```
+
+4. **Configure Firebase**
+   - Your existing Firebase config in `firebase-config.js` will work
+   - No additional Firebase setup needed for Vercel
+
+### Environment Variables Reference
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `OPENAI_API_KEY` | OpenAI API key for transcription and AI features | Yes |
 
 ## Usage
 
-1. Start the server:
+### Recording a New Visit
+1. Click "Start New Visit" on the dashboard
+2. Record audio of your medical visit
+3. AI will transcribe and summarize the visit
+4. Review and confirm extracted medications
+5. Save the visit to your health history
 
-```
-node server.js
-```
+### Using the Health Assistant
+1. Type questions about your health in the chat interface
+2. Ask about medications, visit summaries, or health trends
+3. Get AI-powered insights based on your complete health data
 
-You should see:
-```
-Server listening on port 3000
-```
+### Managing Profile
+1. Click "Profile" to view/edit your health information
+2. Update personal details, chronic conditions, and demographics
+3. All changes are automatically saved to your secure profile
 
-2. Open your browser at
-```
-http://localhost:3000
-```
+## API Endpoints
 
-– You will see a page with “Start Recording” / “Stop Recording” buttons.
+### Local Development
+- `POST /transcribe` - Audio transcription
+- `POST /summarise` - Visit summarization
+- `POST /health-assistant` - Health AI assistant
 
-3. Record & transcribe:
+### Vercel Deployment
+- `POST /api/transcribe` - Audio transcription
+- `POST /api/summarise` - Visit summarization
+- `POST /api/health-assistant` - Health AI assistant
 
-Click “🎤 Start Recording”, speak into your microphone, then click “⏹ Stop Recording”. Once complete, the raw transcript appears in the first textarea.
+## Security
 
-4. Summarize:
+- All user data is stored securely in Firebase
+- Authentication required for all operations
+- Environment variables protect sensitive API keys
+- CORS properly configured for cross-origin requests
 
-Click “📄 Summarize Transcript”.
+## Support
 
-The transcript is sent to the server, which calls gpt-4o-mini to produce a concise summary. The summary is displayed in the second textarea.
+For issues or questions:
+1. Check the browser console for error messages
+2. Verify environment variables are set correctly
+3. Ensure Firebase project is properly configured
+4. Check Vercel function logs for backend errors
 
-Endpoints
+## License
 
-POST /transcribe
-	•	Content-Type: multipart/form-data
-	•	Form Field:
-	•	audio (file): Browser-recorded audio blob (WebM).
-
-Response (JSON):
-
-{ 
-  "success": true, 
-  "transcript": "…your transcribed text…" 
-}
-
-Or, on failure:
-
-{ 
-  "success": false, 
-  "error": "Transcription failed." 
-}
-
-POST /summarise
-	•	Content-Type: application/json
-	•	JSON Body:
-
-{ 
-  "transcript": "…full transcript text…" 
-}
-
-Response (JSON):
-
-{ 
-  "success": true, 
-  "summary": "…concise summary…" 
-}
-
-Or, on failure:
-
-{ 
-  "success": false, 
-  "error": "Summarisation failed." 
-}
+ISC License

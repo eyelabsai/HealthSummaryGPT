@@ -242,6 +242,153 @@
             line-height: 1.4;
             color: var(--text-primary);
         }
+        /* Health Assistant Styles */
+        .health-assistant-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        .health-assistant-header {
+            background: var(--accent-gradient);
+            color: white;
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .health-assistant-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .health-assistant-icon {
+            font-size: 1.8rem;
+            opacity: 0.9;
+        }
+        .health-assistant-chat {
+            height: 400px;
+            overflow-y: auto;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .chat-message {
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+        .chat-message.user {
+            flex-direction: row-reverse;
+        }
+        .chat-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        .chat-avatar.user {
+            background: var(--accent-gradient);
+            color: white;
+        }
+        .chat-avatar.assistant {
+            background: #667eea;
+            color: white;
+        }
+        .chat-content {
+            background: white;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            max-width: 80%;
+            line-height: 1.6;
+        }
+        .chat-message.user .chat-content {
+            background: var(--accent-gradient);
+            color: white;
+        }
+        .chat-input-container {
+            padding: 1.5rem;
+            background: white;
+        }
+        .chat-input-form {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+        .chat-input {
+            flex: 1;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            resize: none;
+            min-height: 60px;
+            max-height: 120px;
+            font-family: inherit;
+            transition: border-color 0.2s ease;
+        }
+        .chat-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .chat-send-btn {
+            background: var(--accent-gradient);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            min-width: 100px;
+        }
+        .chat-send-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102,126,234,0.3);
+        }
+        .chat-send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .chat-placeholder {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 2rem;
+        }
+        .typing-indicator {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            color: #6c757d;
+            font-style: italic;
+        }
+        .typing-dots {
+            display: flex;
+            gap: 0.2rem;
+        }
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #6c757d;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
   </style>
 </head>
 <body>
@@ -284,6 +431,21 @@
                     </div>
                     <div id="visitsList">
                         <div class="empty-state">No visits have been recorded yet.</div>
+                    </div>
+                </div>
+                <div class="card health-assistant-card">
+                    <div class="health-assistant-header">
+                        <div class="health-assistant-icon">🤖</div>
+                        <h2>Health Assistant</h2>
+                    </div>
+                    <div id="healthAssistantChat" class="health-assistant-chat">
+                        <div class="chat-placeholder">Ask me anything about your health, medications, or visit history...</div>
+                    </div>
+                    <div class="chat-input-container">
+                        <form id="healthAssistantForm" class="chat-input-form">
+                            <textarea id="healthAssistantInput" class="chat-input" placeholder="Ask a question about your health..." required></textarea>
+                            <button type="submit" class="chat-send-btn">Send</button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -494,6 +656,108 @@
     document.getElementById('profileBtn').onclick = function() {
       window.location.href = '/profile.html';
     };
+  </script>
+
+  <!-- Health Assistant Chat Logic -->
+  <script>
+    const healthAssistantForm = document.getElementById('healthAssistantForm');
+    const healthAssistantInput = document.getElementById('healthAssistantInput');
+    const healthAssistantChat = document.getElementById('healthAssistantChat');
+    let chatHistory = [];
+    
+    if (healthAssistantForm) {
+      healthAssistantForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const question = healthAssistantInput.value.trim();
+        if (!question) return;
+        
+        healthAssistantInput.value = '';
+        const sendBtn = healthAssistantForm.querySelector('.chat-send-btn');
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Sending...';
+        
+        // Show user question
+        chatHistory.push({ role: 'user', content: question });
+        renderChat();
+        
+        // Get userId from Firebase Auth
+        const user = firebase.auth().currentUser;
+        if (!user) {
+          chatHistory.push({ role: 'assistant', content: 'You must be logged in to use the Health Assistant.' });
+          renderChat();
+          sendBtn.disabled = false;
+          sendBtn.textContent = 'Send';
+          return;
+        }
+        
+        // Show typing indicator
+        chatHistory.push({ role: 'assistant', content: 'typing' });
+        renderChat();
+        
+        try {
+          const data = await firebaseClient.askHealthAssistant(question);
+          
+          // Remove typing indicator
+          chatHistory = chatHistory.filter(msg => msg.content !== 'typing');
+          
+          if (data.success) {
+            chatHistory.push({ role: 'assistant', content: data.answer });
+          } else {
+            chatHistory.push({ role: 'assistant', content: data.error || 'Sorry, something went wrong.' });
+          }
+          renderChat();
+        } catch (err) {
+          chatHistory = chatHistory.filter(msg => msg.content !== 'typing');
+          chatHistory.push({ role: 'assistant', content: 'Sorry, there was a network or server error.' });
+          renderChat();
+        }
+        
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Send';
+      });
+    }
+    
+    function renderChat() {
+      if (chatHistory.length === 0) {
+        healthAssistantChat.innerHTML = '<div class="chat-placeholder">Ask me anything about your health, medications, or visit history...</div>';
+        return;
+      }
+      
+      healthAssistantChat.innerHTML = chatHistory.map(msg => {
+        if (msg.content === 'typing') {
+          return `
+            <div class="chat-message">
+              <div class="chat-avatar assistant">AI</div>
+              <div class="chat-content">
+                <div class="typing-indicator">
+                  <span>Thinking</span>
+                  <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+        
+        const isUser = msg.role === 'user';
+        const avatarText = isUser ? 'U' : 'AI';
+        const avatarClass = isUser ? 'user' : 'assistant';
+        
+        return `
+          <div class="chat-message ${isUser ? 'user' : ''}">
+            <div class="chat-avatar ${avatarClass}">${avatarText}</div>
+            <div class="chat-content">
+              ${msg.content.replace(/\n/g, '<br>')}
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      healthAssistantChat.scrollTop = healthAssistantChat.scrollHeight;
+    }
   </script>
 </body>
 </html>

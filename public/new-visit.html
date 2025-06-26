@@ -458,7 +458,7 @@
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
             
-            const res = await fetch('/transcribe', { 
+            const res = await fetch('/api/transcribe', { 
               method: 'POST', 
               body: formData,
               signal: controller.signal
@@ -538,7 +538,7 @@
       statusEl.className = 'status processing';
 
       try {
-        const res = await fetch('/summarise', {
+        const res = await fetch('/api/summarise', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ transcript })

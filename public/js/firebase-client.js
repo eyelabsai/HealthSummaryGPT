@@ -224,6 +224,65 @@ const firebaseClient = {
     const doc = await db.collection('users').doc(userId).get();
     if (doc.exists) return doc.data();
     return null;
+  },
+
+  // Health Assistant
+  async askHealthAssistant(query) {
+    const user = firebase.auth().currentUser;
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+    
+    const response = await fetch('/api/health-assistant', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: user.uid,
+        query: query
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  },
+
+  // Transcription (for Vercel deployment)
+  async transcribeAudio(audioFile) {
+    const formData = new FormData();
+    formData.append('audio', audioFile);
+    
+    const response = await fetch('/api/transcribe', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  },
+
+  // Summarization (for Vercel deployment)
+  async summarizeTranscript(transcript) {
+    const response = await fetch('/api/summarise', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ transcript })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
   }
 };
 
