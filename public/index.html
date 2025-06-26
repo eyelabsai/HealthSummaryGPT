@@ -395,6 +395,7 @@
     <div class="container">
         <div class="header">
             <h1>OpenCare</h1>
+            <div id="welcomeMessage" style="font-size:1.3rem; margin-top:0.5rem; color:#667eea; font-weight:600;"></div>
             <div style="position:absolute; top:2rem; right:2rem; display:flex; gap:1rem;">
               <button id="profileBtn" style="background:#667eea; color:#fff; border:none; border-radius:6px; padding:0.5rem 1.2rem; font-size:1rem; font-weight:600; cursor:pointer;">Profile</button>
               <button id="logoutBtn" style="background:#dc3545; color:#fff; border:none; border-radius:6px; padding:0.5rem 1.2rem; font-size:1rem; font-weight:600; cursor:pointer;">Logout</button>
@@ -617,11 +618,26 @@
       specialtyFilter.addEventListener('change', renderVisits);
       dateFilter.addEventListener('change', renderVisits);
 
-      // Wait for Firebase Auth before rendering dashboard
-      firebase.auth().onAuthStateChanged(function(user) {
+      // Authentication and Dashboard Logic
+      firebase.auth().onAuthStateChanged(async function(user) {
         if (!user) {
           window.location.href = '/login.html';
         } else {
+          // Fetch user profile for welcome message
+          let welcomeMsg = '';
+          try {
+            const profile = await firebaseClient.getUserProfile();
+            if (profile && profile.firstName && profile.lastName) {
+              welcomeMsg = `Welcome ${profile.firstName} ${profile.lastName}!`;
+            } else if (user.displayName) {
+              welcomeMsg = `Welcome ${user.displayName}!`;
+            } else {
+              welcomeMsg = `Welcome ${user.email}!`;
+            }
+          } catch (e) {
+            welcomeMsg = `Welcome ${user.email}!`;
+          }
+          document.getElementById('welcomeMessage').textContent = welcomeMsg;
           render();
         }
       });
@@ -634,28 +650,21 @@
   <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
   <script src="/js/firebase-client.js"></script>
 
-  <!-- Require login: redirect to /login.html if not authenticated -->
+  <!-- Authentication and Dashboard Logic -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      firebase.auth().onAuthStateChanged(function(user) {
-        if (!user) {
+      // Logout button logic
+      document.getElementById('logoutBtn').onclick = function() {
+        firebase.auth().signOut().then(function() {
           window.location.href = '/login.html';
-        }
-        // else: user is logged in, show dashboard as normal
-      });
+        });
+      };
+      
+      // Profile button logic
+      document.getElementById('profileBtn').onclick = function() {
+        window.location.href = '/profile.html';
+      };
     });
-  </script>
-
-  <!-- Logout button logic -->
-  <script>
-    document.getElementById('logoutBtn').onclick = function() {
-      firebase.auth().signOut().then(function() {
-        window.location.href = '/login.html';
-      });
-    };
-    document.getElementById('profileBtn').onclick = function() {
-      window.location.href = '/profile.html';
-    };
   </script>
 
   <!-- Health Assistant Chat Logic -->

@@ -394,11 +394,11 @@
         <div class="field-group" style="flex-direction: column; gap: 1rem;">
           <div class="field" style="flex-basis: 100%;">
             <label for="loginEmailField">Email</label>
-            <input type="email" id="loginEmailField" placeholder="Enter your email" required autocomplete="email" />
+            <input type="email" id="loginEmailField" name="loginEmail" placeholder="Enter your email" required autocomplete="email" />
           </div>
           <div class="field" style="flex-basis: 100%;">
             <label for="loginPasswordField">Password</label>
-            <input type="password" id="loginPasswordField" placeholder="Enter your password" required autocomplete="current-password" />
+            <input type="password" id="loginPasswordField" name="loginPassword" placeholder="Enter your password" required autocomplete="current-password" />
           </div>
         </div>
         <div id="loginMessage" class="message" aria-live="polite" style="min-height: 1.5em; margin-bottom: 0.5em;"></div>
@@ -417,19 +417,19 @@
           <div class="field-group">
             <div class="field">
               <label for="firstNameField">First Name *</label>
-              <input type="text" id="firstNameField" autocomplete="given-name" required />
+              <input type="text" id="firstNameField" autocomplete="given-name" />
             </div>
             <div class="field">
               <label for="lastNameField">Last Name *</label>
-              <input type="text" id="lastNameField" autocomplete="family-name" required />
+              <input type="text" id="lastNameField" autocomplete="family-name" />
             </div>
             <div class="field">
               <label for="dobField">Date of Birth *</label>
-              <input type="date" id="dobField" required />
+              <input type="date" id="dobField" />
             </div>
             <div class="field">
               <label for="phoneField">Phone Number *</label>
-              <input type="tel" id="phoneField" autocomplete="tel" required />
+              <input type="tel" id="phoneField" autocomplete="tel" />
             </div>
             <div class="field">
               <label for="genderField">Gender</label>
@@ -535,16 +535,7 @@
           <div class="field-group">
             <div class="field">
               <label for="insuranceProviderField">Insurance Provider *</label>
-              <select id="insuranceProviderField" required>
-                <option value="">Select</option>
-                <option value="Aetna">Aetna</option>
-                <option value="Blue Cross">Blue Cross</option>
-                <option value="Cigna">Cigna</option>
-                <option value="UnitedHealthcare">UnitedHealthcare</option>
-                <option value="Kaiser">Kaiser</option>
-                <option value="None">None</option>
-                <option value="Other">Other</option>
-              </select>
+              <select id="insuranceProviderField"></select>
             </div>
             <div class="field">
               <label for="insuranceMemberIdField">Insurance Member ID</label>
@@ -633,12 +624,12 @@
           <div class="field-group">
             <div class="field">
               <label for="emailField">Email *</label>
-              <input type="email" id="emailField" autocomplete="email" required />
+              <input type="email" id="emailField" autocomplete="email" />
               <small style="color: #667eea; font-size: 0.85rem; margin-top: 0.3rem; display: block;">This will be used for login</small>
             </div>
             <div class="field">
               <label for="passwordField">Password *</label>
-              <input type="password" id="passwordField" autocomplete="new-password" required />
+              <input type="password" id="passwordField" autocomplete="new-password" />
               <small style="color: #667eea; font-size: 0.85rem; margin-top: 0.3rem; display: block;">This will be used for login</small>
             </div>
           </div>
@@ -934,6 +925,7 @@
       }
       authMessage.textContent = '';
       authMessage.className = 'message';
+      updateRegistrationRequiredFields();
     };
 
     // Initialize form
@@ -1022,7 +1014,18 @@
         authMessage.className = 'message error';
         return false;
       }
-      return true;
+      
+      // Test Firebase connection
+      try {
+        console.log('Firebase auth object:', firebase.auth());
+        console.log('Firebase app:', firebase.app());
+        return true;
+      } catch (error) {
+        console.error('Firebase connection test failed:', error);
+        authMessage.textContent = 'Error: Firebase connection failed. Please refresh the page.';
+        authMessage.className = 'message error';
+        return false;
+      }
     }
     
     // Form submission
@@ -1030,28 +1033,52 @@
       e.preventDefault();
       loginMessage.textContent = '';
       loginMessage.className = 'message';
+      
       // Check Firebase initialization
       if (!checkFirebase()) {
         return;
       }
+      
       if (!isRegister) {
         // Login logic
         try {
+          console.log('=== LOGIN ATTEMPT START ===');
+          console.log('Email:', loginEmailField.value);
+          console.log('Password length:', loginPasswordField.value.length);
+          
           submitBtn.disabled = true;
           loginBtnText.textContent = 'Logging in...';
           loginSpinner.style.display = 'inline-block';
+          
           if (!loginEmailField.value || !loginPasswordField.value) {
             throw new Error('Please enter both email and password');
           }
+          
+          console.log('Attempting Firebase sign in...');
           const userCredential = await firebase.auth().signInWithEmailAndPassword(loginEmailField.value, loginPasswordField.value);
+          console.log('Login successful:', userCredential.user.email);
+          console.log('User ID:', userCredential.user.uid);
+          
+          // Redirect to main page
           window.location.href = '/';
+          
         } catch (error) {
+          console.error('=== LOGIN ERROR ===');
+          console.error('Error code:', error.code);
+          console.error('Error message:', error.message);
+          console.error('Full error:', error);
+          
           let msg = error.message || 'Login failed.';
           if (error.code === 'auth/user-not-found') msg = 'No account found with that email.';
           if (error.code === 'auth/wrong-password') msg = 'Incorrect password.';
           if (error.code === 'auth/network-request-failed') msg = 'Network error. Please try again.';
+          if (error.code === 'auth/invalid-email') msg = 'Invalid email format.';
+          if (error.code === 'auth/too-many-requests') msg = 'Too many failed attempts. Please try again later.';
+          
           loginMessage.textContent = msg;
           loginMessage.className = 'message error';
+          
+          // Reset button state
           submitBtn.disabled = false;
           loginBtnText.textContent = 'Login';
           loginSpinner.style.display = 'none';
@@ -1115,6 +1142,18 @@
         authMessage.className = 'message error';
       }
     };
+
+    // Add this function to dynamically set required attributes when in registration mode:
+    function updateRegistrationRequiredFields() {
+      // Registration fields
+      firstNameField.required = isRegister;
+      lastNameField.required = isRegister;
+      dobField.required = isRegister;
+      phoneField.required = isRegister;
+      insuranceProviderField.required = isRegister;
+      emailField.required = isRegister;
+      passwordField.required = isRegister;
+    }
   </script>
 </body>
 </html> 

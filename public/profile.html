@@ -458,12 +458,16 @@
           console.log('Loaded profile data:', profile);
           
           if (profile) {
-            // Populate all fields with data from database, or empty string if not provided
-            document.getElementById('fullName').value = profile.fullName || '';
-            document.getElementById('dateOfBirth').value = profile.dateOfBirth || '';
+            // Combine firstName and lastName into fullName
+            const fullName = (profile.firstName || '') + (profile.lastName ? ' ' + profile.lastName : '');
+            document.getElementById('fullName').value = fullName.trim();
+            // Use dob for dateOfBirth
+            document.getElementById('dateOfBirth').value = profile.dob || profile.dateOfBirth || '';
             document.getElementById('gender').value = profile.gender || '';
             document.getElementById('phone').value = profile.phone || '';
-            document.getElementById('address').value = profile.address || '';
+            // Combine street, city, state, zip into address
+            const address = [profile.street, profile.city, profile.state, profile.zip].filter(Boolean).join(', ');
+            document.getElementById('address').value = address;
             document.getElementById('insuranceProvider').value = profile.insuranceProvider || '';
             document.getElementById('insuranceMemberId').value = profile.insuranceMemberId || '';
             document.getElementById('emergencyContactName').value = profile.emergencyContactName || '';
@@ -527,12 +531,28 @@
         saveBtn.disabled = true;
         
         try {
+          const fullName = document.getElementById('fullName').value.trim();
+          const [firstName, ...lastNameParts] = fullName.split(' ');
+          const lastName = lastNameParts.join(' ');
+          const address = document.getElementById('address').value.trim();
+          let street = '', city = '', state = '', zip = '';
+          if (address) {
+            const parts = address.split(',').map(s => s.trim());
+            street = parts[0] || '';
+            city = parts[1] || '';
+            state = parts[2] || '';
+            zip = parts[3] || '';
+          }
           const profileData = {
-            fullName: document.getElementById('fullName').value.trim(),
-            dateOfBirth: document.getElementById('dateOfBirth').value,
+            firstName,
+            lastName,
+            dob: document.getElementById('dateOfBirth').value,
             gender: document.getElementById('gender').value,
             phone: document.getElementById('phone').value.trim(),
-            address: document.getElementById('address').value.trim(),
+            street,
+            city,
+            state,
+            zip,
             insuranceProvider: document.getElementById('insuranceProvider').value,
             insuranceMemberId: document.getElementById('insuranceMemberId').value.trim(),
             emergencyContactName: document.getElementById('emergencyContactName').value.trim(),
