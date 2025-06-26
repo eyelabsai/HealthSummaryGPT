@@ -25,8 +25,10 @@
       color: var(--text-primary);
     }
     .container {
-      max-width: 900px;
+      max-width: 1400px;
+      width: 100%;
       margin: 0 auto;
+      padding: 2.5rem 2rem;
     }
     .header {
       text-align: center;
@@ -56,6 +58,8 @@
       padding: 2rem;
       box-shadow: 0 4px 12px rgba(0,0,0,0.05);
       margin-bottom: 2rem;
+      width: 100%;
+      box-sizing: border-box;
     }
     .card h2 {
       font-size: 1.5rem;
@@ -131,13 +135,37 @@
       border-color: var(--success-color);
       color: #155724;
     }
+    .card#summaryCard {
+      max-width: 100%;
+    }
     .summary-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 1.5rem;
+      gap: 2.5rem;
+      margin-bottom: 2rem;
     }
-    .summary-grid textarea {
-      min-height: 100px;
+    .summary-grid > div {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .summary-grid textarea,
+    .summary-grid select {
+      width: 100%;
+      min-height: 180px;
+      font-size: 1.18rem;
+      padding: 1.2rem;
+      border-radius: 12px;
+      border: 1.5px solid #ccd6f6;
+      background: #f8f9fa;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+    .summary-grid select {
+      min-height: unset;
+      height: 60px;
+      font-size: 1.13rem;
+      padding: 1rem 1.2rem;
     }
     .recording-info {
       margin-top: 1rem;
@@ -242,6 +270,11 @@
         padding: 1rem;
       }
     }
+    @media (max-width: 1500px) {
+      .container {
+        max-width: 98vw;
+      }
+    }
   </style>
 </head>
 <body>
@@ -292,36 +325,9 @@
         <div>
           <label for="specialty">Medical Specialty</label>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <select id="specialty" style="flex: 1; padding: 0.85rem 1rem; border-radius: 8px; border: 1px solid #ccd6f6; font-size: 1.05rem; background: #f8f9fa;">
-              <option value="">Select specialty...</option>
-              <option value="Primary Care (PCP)">Primary Care (PCP)</option>
-              <option value="Family Medicine">Family Medicine</option>
-              <option value="Internal Medicine">Internal Medicine</option>
-              <option value="Cardiology">Cardiology</option>
-              <option value="Ophthalmology">Ophthalmology</option>
-              <option value="Dermatology">Dermatology</option>
-              <option value="Orthopedics">Orthopedics</option>
-              <option value="Neurology">Neurology</option>
-              <option value="Endocrinology">Endocrinology</option>
-              <option value="Gastroenterology">Gastroenterology</option>
-              <option value="Pulmonology">Pulmonology</option>
-              <option value="Rheumatology">Rheumatology</option>
-              <option value="Urology">Urology</option>
-              <option value="Gynecology">Gynecology</option>
-              <option value="Obstetrics">Obstetrics</option>
-              <option value="Pediatrics">Pediatrics</option>
-              <option value="Psychiatry">Psychiatry</option>
-              <option value="Oncology">Oncology</option>
-              <option value="Emergency Medicine">Emergency Medicine</option>
-              <option value="Urgent Care">Urgent Care</option>
-              <option value="Physical Therapy">Physical Therapy</option>
-              <option value="Occupational Therapy">Occupational Therapy</option>
-              <option value="Nutrition">Nutrition</option>
-              <option value="Other">Other</option>
-            </select>
-            <button type="button" id="editSpecialtyBtn" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.9rem;" onclick="toggleSpecialtyEdit()">✏️ Edit</button>
+            <select id="specialty" style="flex: 1; padding: 0.85rem 1rem; border-radius: 8px; border: 1px solid #ccd6f6; font-size: 1.05rem; background: #f8f9fa;"></select>
           </div>
-          <small style="color: #667eea; font-size: 0.85rem; margin-top: 0.3rem; display: block;">Click to change if the AI picked the wrong specialty</small>
+          <small id="specialtyHelper" style="color: #667eea; font-size: 0.95rem; margin-top: 0.3rem; display: block;"></small>
         </div>
         <div>
           <label for="date">Date of Visit</label>
@@ -548,12 +554,14 @@
           summaryCard.style.display = 'block';
           summaryEl.value = data.summary || '';
           tldrEl.value = data.tldr || '';
+          populateSpecialtyDropdown(data.specialty || '');
           specialtyEl.value = data.specialty || '';
-          dateEl.value = data.date || '';
-          
+          // If date is missing or 'Not specified', set to today
+          let summaryDate = data.date && data.date.trim().toLowerCase() !== 'not specified' ? data.date : new Date().toISOString().split('T')[0];
+          dateEl.value = summaryDate;
           // Use medication verification instead of direct saving
           displayMedicationVerification(data.medications || []);
-
+          document.getElementById('specialtyHelper').textContent = data.specialty ? `AI suggested: ${data.specialty}. You can change this if needed.` : '';
         } else {
           throw new Error(data.error || 'Summarization failed.');
         }
@@ -579,7 +587,7 @@
           id: Date.now().toString(),
           summary: summaryEl.value || 'No summary.',
           tldr: tldrEl.value || 'No TLDR.',
-          specialty: document.getElementById('specialty').value || 'Uncategorized',
+          specialty: specialtyEl.value || 'Uncategorized',
           date: dateEl.value || new Date().toISOString().split('T')[0]
         };
         
@@ -696,7 +704,32 @@
       return verifiedMeds;
     }
 
-        // Function to display medication verification interface
+    // Populate specialty dropdown options
+    function populateSpecialtyDropdown(selectedValue) {
+      const specialtyOptions = [
+        '', 'Primary Care (PCP)', 'Family Medicine', 'Internal Medicine', 'Cardiology', 'Ophthalmology',
+        'Dermatology', 'Orthopedics', 'Neurology', 'Endocrinology', 'Gastroenterology', 'Pulmonology',
+        'Rheumatology', 'Urology', 'Gynecology', 'Obstetrics', 'Pediatrics', 'Psychiatry', 'Oncology',
+        'Emergency Medicine', 'Urgent Care', 'Physical Therapy', 'Occupational Therapy', 'Nutrition', 'Other'
+      ];
+      specialtyEl.innerHTML = '';
+      specialtyOptions.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt;
+        option.textContent = opt === '' ? 'Select specialty...' : opt;
+        specialtyEl.appendChild(option);
+      });
+      if (selectedValue && specialtyOptions.includes(selectedValue)) {
+        specialtyEl.value = selectedValue;
+      } else {
+        specialtyEl.value = '';
+      }
+    }
+
+    // Call this on page load
+    populateSpecialtyDropdown();
+
+    // Function to display medication verification interface
     function displayMedicationVerification(medications) {
       if (!medications || medications.length === 0) {
         // No medications to verify, proceed directly
@@ -773,7 +806,6 @@
       finishVisitBtn.style.display = 'none';
     }
 
-    // Function to save visit and medications
     // Function to toggle specialty field editing
     function toggleSpecialtyEdit() {
       const specialtySelect = document.getElementById("specialty");
@@ -805,15 +837,21 @@
       }
       const userId = user.uid;
       // Prepare visit data
+      let visitDate = dateEl.value && dateEl.value.trim() !== '' && dateEl.value.trim().toLowerCase() !== 'not specified'
+        ? dateEl.value.trim()
+        : new Date().toISOString().split('T')[0];
+      const specialtyValue = document.getElementById('specialty').value || 'Uncategorized';
+      console.log('DEBUG: specialty to be saved:', specialtyValue);
       const newVisit = {
-        date: dateEl.value || new Date().toISOString().split('T')[0],
-        specialty: document.getElementById('specialty').value || 'Uncategorized',
+        date: visitDate,
+        specialty: specialtyValue,
         summary: summaryEl.value || 'No summary.',
         tldr: tldrEl.value || 'No TLDR.',
         transcript: transcriptEl.value || '',
         userId
       };
-      console.log('Saving visit to Firestore:', newVisit);
+      console.log('DEBUG: visitDate to be saved:', visitDate);
+      console.log('DEBUG: newVisit object to be saved:', newVisit);
       try {
         const visitRef = await firebaseClient.createVisit(newVisit);
         // Save medications to Firestore
