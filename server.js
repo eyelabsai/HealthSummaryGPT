@@ -12,6 +12,7 @@ import { dirname } from 'path';
 import { userService, visitService, medicationService } from './services/firebase-service.js';
 import { Readable } from 'stream';
 import mime from 'mime-types';
+import { toFile } from "openai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -67,10 +68,12 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     // Log the browser mimetype for debugging
     console.log('Browser mimetype:', req.file.mimetype);
     const ext = mime.extension(req.file.mimetype) || 'webm';
-    const fileForOpenAI = {
-      data: req.file.buffer,
-      name: `recording.${ext}`
-    };
+    // turn the Buffer into a bona-fide File object the SDK can stream
+    const fileForOpenAI = await toFile(
+      req.file.buffer,
+      `recording.${ext}`,
+      { contentType: req.file.mimetype }
+    );
     const { text } = await openai.audio.transcriptions.create({
       file: fileForOpenAI,
       model: 'whisper-1',
