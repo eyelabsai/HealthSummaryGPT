@@ -13,7 +13,7 @@ import { userService, visitService, medicationService } from './services/firebas
 import { Readable } from 'stream';
 import mime from 'mime-types';
 import { tmpdir } from 'os';
-import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
+import ffmpegPath from 'ffmpeg-static';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -65,7 +65,7 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     writeFileSync(tmpIn, req.file.buffer);
 
     // -ar 16000  -> 16 kHz, -ac 1 -> mono
-    execFileSync(ffmpegInstaller.path, ['-y', '-i', tmpIn, '-ar', '16000', '-ac', '1', tmpOut]);
+    execFileSync(ffmpegPath, ['-y', '-i', tmpIn, '-ar', '16000', '-ac', '1', tmpOut]);
 
     const wavBuffer = readFileSync(tmpOut);
     const wavFile = await toFile(wavBuffer, 'recording.wav', { contentType: 'audio/wav' });

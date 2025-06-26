@@ -6,6 +6,9 @@
   "routes": [
     { "src": "/(.*)", "dest": "/server.js" }
   ],
+  "externalFiles": [
+    "node_modules/ffmpeg-static/ffmpeg"
+  ],
   "env": {
     "NODE_ENV": "production"
   }
