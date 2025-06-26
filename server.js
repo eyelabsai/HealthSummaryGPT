@@ -69,7 +69,13 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     // Send the buffer directly to OpenAI
     console.log('Sending to OpenAI for transcription...');
     const transcriptionResponse = await openai.audio.transcriptions.create({
-      file: req.file.buffer,
+      file: {
+        value: req.file.buffer,
+        options: {
+          filename: req.file.originalname || "audio.webm",
+          contentType: req.file.mimetype || "audio/webm"
+        }
+      },
       model: "whisper-1",
       response_format: "json",
       temperature: 0.3, // Lower temperature for more consistent results
