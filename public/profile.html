@@ -305,8 +305,12 @@
         <div class="section-title">Personal Info</div>
         <div class="field-group">
           <div class="field">
-            <label for="fullName">Full Name</label>
-            <input type="text" id="fullName" required />
+            <label for="firstName">First Name</label>
+            <input type="text" id="firstName" required />
+          </div>
+          <div class="field">
+            <label for="lastName">Last Name</label>
+            <input type="text" id="lastName" required />
           </div>
           <div class="field">
             <label for="dateOfBirth">Date of Birth</label>
@@ -458,9 +462,9 @@
           console.log('Loaded profile data:', profile);
           
           if (profile) {
-            // Combine firstName and lastName into fullName
-            const fullName = (profile.firstName || '') + (profile.lastName ? ' ' + profile.lastName : '');
-            document.getElementById('fullName').value = fullName.trim();
+            // Set firstName and lastName separately
+            document.getElementById('firstName').value = profile.firstName || '';
+            document.getElementById('lastName').value = profile.lastName || '';
             // Use dob for dateOfBirth
             document.getElementById('dateOfBirth').value = profile.dob || profile.dateOfBirth || '';
             document.getElementById('gender').value = profile.gender || '';
@@ -531,9 +535,8 @@
         saveBtn.disabled = true;
         
         try {
-          const fullName = document.getElementById('fullName').value.trim();
-          const [firstName, ...lastNameParts] = fullName.split(' ');
-          const lastName = lastNameParts.join(' ');
+          const firstName = document.getElementById('firstName').value.trim();
+          const lastName = document.getElementById('lastName').value.trim();
           const address = document.getElementById('address').value.trim();
           let street = '', city = '', state = '', zip = '';
           if (address) {
@@ -570,7 +573,7 @@
           
           document.getElementById('profileMessage').textContent = 'Profile saved successfully!';
           document.getElementById('profileMessage').className = 'message success';
-          document.getElementById('profileAvatar').textContent = getInitials(profileData.fullName);
+          document.getElementById('profileAvatar').textContent = getInitials(firstName + ' ' + lastName);
           
           // Clear message after 3 seconds
           setTimeout(() => {
