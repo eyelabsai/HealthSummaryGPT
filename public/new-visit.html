@@ -559,9 +559,9 @@
           // If date is missing or 'Not specified', set to today
           let summaryDate = data.date && data.date.trim().toLowerCase() !== 'not specified' ? data.date : new Date().toISOString().split('T')[0];
           dateEl.value = summaryDate;
+          document.getElementById('specialtyHelper').textContent = data.specialty ? `AI suggested: ${data.specialty}. You can change this if needed.` : '';
           // Use medication verification instead of direct saving
           displayMedicationVerification(data.medications || []);
-          document.getElementById('specialtyHelper').textContent = data.specialty ? `AI suggested: ${data.specialty}. You can change this if needed.` : '';
         } else {
           throw new Error(data.error || 'Summarization failed.');
         }

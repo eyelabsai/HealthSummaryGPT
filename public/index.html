@@ -391,24 +391,48 @@
         }
         /* Collapsible medication styles */
         .collapsible-med .med-header {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 1.05rem;
-            gap: 0.5rem;
-            padding: 0.2rem 0;
+          display: flex;
+          align-items: center;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 1.08rem;
+          gap: 0.7rem;
+          padding: 0.3rem 0;
+          transition: background 0.15s;
+          border-radius: 6px;
         }
-        .collapsible-med .dropdown-arrow {
-            font-size: 1.1rem;
-            transition: transform 0.2s;
-            margin-right: 0.3rem;
+        .collapsible-med .med-header:hover {
+          background: #f1f5fa;
+        }
+        .collapsible-med .chevron {
+          display: inline-block;
+          width: 22px;
+          height: 22px;
+          font-size: 1.3rem;
+          color: #667eea;
+          line-height: 1;
+          transition: none;
+        }
+        .collapsible-med .chevron.open {
+          /* No rotation, just swap character */
+        }
+        .collapsible-med .med-name {
+          font-weight: 700;
+          font-size: 1.08rem;
+          color: var(--text-primary);
         }
         .collapsible-med .med-details-content {
-            margin-top: 0.5rem;
-            margin-bottom: 0.5rem;
-            padding-left: 1.2rem;
-            border-left: 2px solid #e9ecef;
+          margin-top: 0.5rem;
+          margin-bottom: 0.5rem;
+          max-height: 1000px;
+          overflow: hidden;
+          transition: max-height 0.3s cubic-bezier(0.4,0,0.2,1);
+          padding-left: 0;
+          border-left: none;
+        }
+        .collapsible-med .med-details-content.closed {
+          max-height: 0;
+          padding: 0;
         }
   </style>
 </head>
@@ -603,10 +627,10 @@
           return `
             <div class="medication-item collapsible-med" data-idx="${idx}">
               <div class="med-header" onclick="toggleMedDetails(${idx})">
-                <span class="dropdown-arrow" id="arrow-${idx}">&#9654;</span>
+                <span class="chevron" id="chevron-${idx}">▼</span>
                 <span class="med-name">${med.name}</span>
               </div>
-              <div class="med-details-content" id="med-details-${idx}" style="display:none;">
+              <div class="med-details-content closed" id="med-details-${idx}">
                 ${details.length > 0 ? `<div class="med-details">${detailsHtml}</div>` : ''}
                 ${instructionsHtml}
               </div>
@@ -618,13 +642,15 @@
 
       window.toggleMedDetails = function(idx) {
         const details = document.getElementById('med-details-' + idx);
-        const arrow = document.getElementById('arrow-' + idx);
-        if (details.style.display === 'none') {
-          details.style.display = 'block';
-          arrow.innerHTML = '&#9660;';
+        const chevron = document.getElementById('chevron-' + idx);
+        if (details.classList.contains('closed')) {
+          details.classList.remove('closed');
+          chevron.classList.add('open');
+          chevron.textContent = '▲';
         } else {
-          details.style.display = 'none';
-          arrow.innerHTML = '&#9654;';
+          details.classList.add('closed');
+          chevron.classList.remove('open');
+          chevron.textContent = '▼';
         }
       }
 
