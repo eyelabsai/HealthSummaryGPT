@@ -243,6 +243,50 @@
       background: #e0e7ff;
       color: #4c51bf;
     }
+    
+    /* Weight dropdown styles */
+    .weight-container {
+      position: relative;
+    }
+    .weight-input {
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      border: 1px solid #ccd6f6;
+      background: #f8f9fa;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.05rem;
+      transition: border 0.2s, box-shadow 0.2s;
+    }
+    .weight-input:hover {
+      border-color: #667eea;
+    }
+    .weight-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid #ccd6f6;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(102,126,234,0.08);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 10;
+      display: none;
+    }
+    .weight-option {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      font-size: 1.02rem;
+      color: #333;
+    }
+    .weight-option:hover {
+      background: #e0e7ff;
+      color: #4c51bf;
+    }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
@@ -340,12 +384,27 @@
             <input type="hidden" id="chronicConditions" />
           </div>
           <div class="field">
-            <label for="height">Height (e.g., 170 cm)</label>
-            <input type="text" id="height" />
+            <label for="height">Height</label>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <select id="heightFeet" style="flex:1; min-width:70px;">
+                <option value="">ft</option>
+              </select>
+              <span>ft</span>
+              <select id="heightInches" style="flex:1; min-width:70px;">
+                <option value="">in</option>
+              </select>
+              <span>in</span>
+            </div>
           </div>
           <div class="field">
-            <label for="weight">Weight (e.g., 65 kg)</label>
-            <input type="text" id="weight" />
+            <label for="weight">Weight</label>
+            <div class="weight-container">
+              <div class="weight-input" id="weightInput" onclick="toggleWeightDropdown()">
+                <span id="weightDisplay">Select weight</span>
+                <span>▼</span>
+              </div>
+              <div class="weight-dropdown" id="weightDropdown"></div>
+            </div>
           </div>
           <div class="field">
             <label for="bloodType">Blood Type</label>
@@ -375,17 +434,31 @@
       if (parts.length === 1) return parts[0][0].toUpperCase();
       return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
     }
+    let chronicMulti = null;
+    
+    // Single DOMContentLoaded event listener to handle all initialization
     document.addEventListener('DOMContentLoaded', async () => {
+      // Initialize chronic conditions multi-select
+      chronicMulti = setupMultiSelect('chronicConditionsMulti', 'chronicConditions');
+      
+      // Initialize height and weight dropdowns
+      initializeHeightWeightDropdowns();
+      
       // Require login
       firebase.auth().onAuthStateChanged(async function(user) {
         if (!user) {
           window.location.href = '/login.html';
           return;
         }
-        // Load profile
+        
+        // Load profile data
         try {
+          console.log('Loading profile for user:', user.uid);
           const profile = await firebaseClient.getUserProfile();
+          console.log('Loaded profile data:', profile);
+          
           if (profile) {
+            // Populate all fields with data from database, or empty string if not provided
             document.getElementById('fullName').value = profile.fullName || '';
             document.getElementById('dateOfBirth').value = profile.dateOfBirth || '';
             document.getElementById('gender').value = profile.gender || '';
@@ -397,54 +470,155 @@
             document.getElementById('emergencyContactPhone').value = profile.emergencyContactPhone || '';
             document.getElementById('primaryPhysician').value = profile.primaryPhysician || '';
             document.getElementById('allergies').value = profile.allergies || '';
-            document.getElementById('chronicConditions').value = profile.chronicConditions || '';
-            document.getElementById('height').value = profile.height || '';
-            document.getElementById('weight').value = profile.weight || '';
+            
+            // Handle height - parse from stored format or use individual fields
+            if (profile.height) {
+              // Parse height from format like "5 ft 10 in"
+              const heightMatch = profile.height.match(/(\d+)\s*ft\s*(\d+)\s*in/);
+              if (heightMatch) {
+                document.getElementById('heightFeet').value = heightMatch[1];
+                document.getElementById('heightInches').value = heightMatch[2];
+              }
+            } else if (profile.heightFeet && profile.heightInches) {
+              document.getElementById('heightFeet').value = profile.heightFeet;
+              document.getElementById('heightInches').value = profile.heightInches;
+            }
+            
+            // Handle weight - parse from stored format or use individual field
+            if (profile.weight) {
+              // Parse weight from format like "150 lbs"
+              const weightMatch = profile.weight.match(/(\d+)\s*lbs/);
+              if (weightMatch) {
+                selectWeight(parseInt(weightMatch[1]));
+              }
+            } else if (profile.weightInput) {
+              selectWeight(parseInt(profile.weightInput));
+            }
+            
             document.getElementById('bloodType').value = profile.bloodType || '';
-            document.getElementById('profileAvatar').textContent = getInitials(profile.fullName);
-            if (profile.chronicConditions) {
-              const vals = profile.chronicConditions.split(',').map(s => canonicalizeCondition(s.trim())).filter(Boolean);
-              if (chronicMulti) chronicMulti.setSelected(vals);
+            
+            // Update avatar with user's initials
+            document.getElementById('profileAvatar').textContent = getInitials(profile.fullName || user.displayName || user.email);
+            
+            // Handle chronic conditions
+            if (profile.chronicConditions && chronicMulti) {
+              const conditions = profile.chronicConditions.split(',').map(s => s.trim()).filter(Boolean);
+              chronicMulti.setSelected(conditions);
             }
           } else {
+            // No profile data exists yet, set avatar to user's display name or email
             document.getElementById('profileAvatar').textContent = getInitials(user.displayName || user.email);
+            console.log('No profile data found for user');
           }
         } catch (err) {
+          console.error('Error loading profile:', err);
           document.getElementById('profileMessage').textContent = 'Error loading profile: ' + err.message;
           document.getElementById('profileMessage').className = 'message error';
         }
       });
+      
       // Save profile
       document.getElementById('profileForm').onsubmit = async (e) => {
         e.preventDefault();
-        const profileData = {
-          fullName: document.getElementById('fullName').value.trim(),
-          dateOfBirth: document.getElementById('dateOfBirth').value,
-          gender: document.getElementById('gender').value,
-          phone: document.getElementById('phone').value.trim(),
-          address: document.getElementById('address').value.trim(),
-          insuranceProvider: document.getElementById('insuranceProvider').value,
-          insuranceMemberId: document.getElementById('insuranceMemberId').value.trim(),
-          emergencyContactName: document.getElementById('emergencyContactName').value.trim(),
-          emergencyContactPhone: document.getElementById('emergencyContactPhone').value.trim(),
-          primaryPhysician: document.getElementById('primaryPhysician').value.trim(),
-          allergies: document.getElementById('allergies').value.trim(),
-          chronicConditions: chronicMulti.getSelected().map(canonicalizeCondition).join(', '),
-          height: document.getElementById('height').value.trim(),
-          weight: document.getElementById('weight').value.trim(),
-          bloodType: document.getElementById('bloodType').value
-        };
+        
+        const saveBtn = document.getElementById('profileForm').querySelector('.save-btn');
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = 'Saving...';
+        saveBtn.disabled = true;
+        
         try {
+          const profileData = {
+            fullName: document.getElementById('fullName').value.trim(),
+            dateOfBirth: document.getElementById('dateOfBirth').value,
+            gender: document.getElementById('gender').value,
+            phone: document.getElementById('phone').value.trim(),
+            address: document.getElementById('address').value.trim(),
+            insuranceProvider: document.getElementById('insuranceProvider').value,
+            insuranceMemberId: document.getElementById('insuranceMemberId').value.trim(),
+            emergencyContactName: document.getElementById('emergencyContactName').value.trim(),
+            emergencyContactPhone: document.getElementById('emergencyContactPhone').value.trim(),
+            primaryPhysician: document.getElementById('primaryPhysician').value.trim(),
+            allergies: document.getElementById('allergies').value.trim(),
+            chronicConditions: chronicMulti ? chronicMulti.getSelected().join(', ') : '',
+            height: `${document.getElementById('heightFeet').value} ft ${document.getElementById('heightInches').value} in`,
+            weight: document.getElementById('weightDisplay').textContent,
+            bloodType: document.getElementById('bloodType').value
+          };
+          
+          console.log('Saving profile data:', profileData);
           await firebaseClient.setUserProfile(profileData);
-          document.getElementById('profileMessage').textContent = 'Profile saved!';
+          
+          document.getElementById('profileMessage').textContent = 'Profile saved successfully!';
           document.getElementById('profileMessage').className = 'message success';
           document.getElementById('profileAvatar').textContent = getInitials(profileData.fullName);
+          
+          // Clear message after 3 seconds
+          setTimeout(() => {
+            document.getElementById('profileMessage').textContent = '';
+            document.getElementById('profileMessage').className = 'message';
+          }, 3000);
+          
         } catch (err) {
+          console.error('Error saving profile:', err);
           document.getElementById('profileMessage').textContent = 'Error saving profile: ' + err.message;
           document.getElementById('profileMessage').className = 'message error';
+        } finally {
+          saveBtn.textContent = originalText;
+          saveBtn.disabled = false;
         }
       };
     });
+    
+    // Height and weight dropdown functions
+    function initializeHeightWeightDropdowns() {
+      const heightFeet = document.getElementById('heightFeet');
+      const heightInches = document.getElementById('heightInches');
+      const weightDropdown = document.getElementById('weightDropdown');
+      
+      // Populate height dropdowns
+      for (let ft = 4; ft <= 7; ft++) {
+        const opt = document.createElement('option');
+        opt.value = ft;
+        opt.textContent = ft;
+        heightFeet.appendChild(opt);
+      }
+      for (let inch = 0; inch <= 11; inch++) {
+        const opt = document.createElement('option');
+        opt.value = inch;
+        opt.textContent = inch;
+        heightInches.appendChild(opt);
+      }
+      
+      // Populate weight dropdown
+      for (let w = 80; w <= 400; w++) {
+        const opt = document.createElement('div');
+        opt.className = 'weight-option';
+        opt.textContent = w + ' lbs';
+        opt.onclick = () => selectWeight(w);
+        weightDropdown.appendChild(opt);
+      }
+      
+      // Close weight dropdown when clicking outside
+      document.addEventListener('click', function(e) {
+        const weightInput = document.getElementById('weightInput');
+        if (!weightInput.contains(e.target) && !weightDropdown.contains(e.target)) {
+          weightDropdown.style.display = 'none';
+        }
+      });
+    }
+    
+    function toggleWeightDropdown() {
+      const weightDropdown = document.getElementById('weightDropdown');
+      weightDropdown.style.display = weightDropdown.style.display === 'block' ? 'none' : 'block';
+    }
+    
+    function selectWeight(weight) {
+      const weightDisplay = document.getElementById('weightDisplay');
+      const weightDropdown = document.getElementById('weightDropdown');
+      weightDisplay.textContent = weight + ' lbs';
+      weightDropdown.style.display = 'none';
+    }
+    
     // Chronic conditions multi-select with autocomplete and synonym mapping
     const chronicConditionsList = [
       { canonical: 'Hypertension', synonyms: ['BP', 'HTN', 'High Blood Pressure', 'Hypertension'] },
@@ -566,10 +740,6 @@
         setSelected: vals => { selected = vals; render(); }
       };
     }
-    let chronicMulti = null;
-    document.addEventListener('DOMContentLoaded', () => {
-      chronicMulti = setupMultiSelect('chronicConditionsMulti', 'chronicConditions');
-    });
     // Address autocomplete using Nominatim/OSM
     const addressInput = document.getElementById('address');
     let addressTimeout = null;

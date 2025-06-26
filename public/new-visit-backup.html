@@ -291,37 +291,7 @@
         </div>
         <div>
           <label for="specialty">Medical Specialty</label>
-          <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <select id="specialty" style="flex: 1; padding: 0.85rem 1rem; border-radius: 8px; border: 1px solid #ccd6f6; font-size: 1.05rem; background: #f8f9fa;">
-              <option value="">Select specialty...</option>
-              <option value="Primary Care (PCP)">Primary Care (PCP)</option>
-              <option value="Family Medicine">Family Medicine</option>
-              <option value="Internal Medicine">Internal Medicine</option>
-              <option value="Cardiology">Cardiology</option>
-              <option value="Ophthalmology">Ophthalmology</option>
-              <option value="Dermatology">Dermatology</option>
-              <option value="Orthopedics">Orthopedics</option>
-              <option value="Neurology">Neurology</option>
-              <option value="Endocrinology">Endocrinology</option>
-              <option value="Gastroenterology">Gastroenterology</option>
-              <option value="Pulmonology">Pulmonology</option>
-              <option value="Rheumatology">Rheumatology</option>
-              <option value="Urology">Urology</option>
-              <option value="Gynecology">Gynecology</option>
-              <option value="Obstetrics">Obstetrics</option>
-              <option value="Pediatrics">Pediatrics</option>
-              <option value="Psychiatry">Psychiatry</option>
-              <option value="Oncology">Oncology</option>
-              <option value="Emergency Medicine">Emergency Medicine</option>
-              <option value="Urgent Care">Urgent Care</option>
-              <option value="Physical Therapy">Physical Therapy</option>
-              <option value="Occupational Therapy">Occupational Therapy</option>
-              <option value="Nutrition">Nutrition</option>
-              <option value="Other">Other</option>
-            </select>
-            <button type="button" id="editSpecialtyBtn" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.9rem;" onclick="toggleSpecialtyEdit()">✏️ Edit</button>
-          </div>
-          <small style="color: #667eea; font-size: 0.85rem; margin-top: 0.3rem; display: block;">Click to change if the AI picked the wrong specialty</small>
+          <textarea id="specialty" placeholder="e.g., Cardiology" readonly></textarea>
         </div>
         <div>
           <label for="date">Date of Visit</label>
@@ -693,27 +663,6 @@
     }
 
     // Function to save visit and medications
-    // Function to toggle specialty field editing
-    function toggleSpecialtyEdit() {
-      const specialtySelect = document.getElementById("specialty");
-      const editBtn = document.getElementById("editSpecialtyBtn");
-      
-      if (specialtySelect.disabled) {
-        specialtySelect.disabled = false;
-        specialtySelect.style.background = "#fff";
-        specialtySelect.style.borderColor = "#667eea";
-        editBtn.textContent = "✓ Done";
-        editBtn.className = "btn btn-primary";
-        specialtySelect.focus();
-      } else {
-        specialtySelect.disabled = true;
-        specialtySelect.style.background = "#f8f9fa";
-        specialtySelect.style.borderColor = "#ccd6f6";
-        editBtn.textContent = "✏️ Edit";
-        editBtn.className = "btn btn-secondary";
-      }
-    }
-
     async function saveVisitAndMedications(medications) {
       // Get current user
       const user = firebase.auth().currentUser;

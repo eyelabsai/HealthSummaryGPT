@@ -28,12 +28,79 @@
       font-weight: 700;
       color: #333;
     }
+    
+    /* Progress Bar Styles */
+    .progress-container {
+      margin-bottom: 2rem;
+      display: none;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e0e7ff;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.3s ease;
+      border-radius: 4px;
+    }
+    .progress-text {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #667eea;
+      font-weight: 500;
+    }
+    
+    /* Step Navigation */
+    .step-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2rem;
+      display: none;
+    }
+    .step-btn {
+      padding: 0.8rem 1.5rem;
+      border: 2px solid #667eea;
+      background: transparent;
+      color: #667eea;
+      border-radius: 25px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .step-btn:hover {
+      background: #667eea;
+      color: white;
+    }
+    .step-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
     form {
       display: flex;
       flex-direction: column;
       gap: 2.2rem;
       margin-top: 1.5rem;
     }
+    
+    /* Step Styles */
+    .step {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+    .step.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
     .section {
       margin-bottom: 0.5rem;
     }
@@ -79,6 +146,50 @@
       outline: none;
       box-shadow: 0 0 0 2px #e0e7ff;
     }
+    
+    /* Weight dropdown improvements */
+    .weight-container {
+      position: relative;
+    }
+    .weight-input {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      border: 1px solid #ccd6f6;
+      font-size: 1.05rem;
+      background: #f8f9fa;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .weight-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #ccd6f6;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 100;
+      display: none;
+    }
+    .weight-option {
+      padding: 0.8rem 1rem;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      transition: background 0.2s;
+    }
+    .weight-option:hover {
+      background: #e0e7ff;
+    }
+    .weight-option:last-child {
+      border-bottom: none;
+    }
+    
     /* Make email and password fields larger on both login and registration */
     #emailField, #passwordField {
       font-size: 1.25rem !important;
@@ -88,7 +199,8 @@
       border: 1.5px solid #bfc8f8 !important;
       background: #f8f9fa !important;
     }
-    .register-btn {
+    
+    .register-btn, .next-btn, .prev-btn {
       width: 100%;
       padding: 1rem;
       border-radius: 10px;
@@ -102,10 +214,17 @@
       box-shadow: 0 2px 8px rgba(102,126,234,0.08);
       transition: background 0.2s, box-shadow 0.2s;
     }
-    .register-btn:hover {
+    .register-btn:hover, .next-btn:hover, .prev-btn:hover {
       background: linear-gradient(90deg, #5a67d8 0%, #6b47b6 100%);
       box-shadow: 0 4px 16px rgba(102,126,234,0.13);
     }
+    .prev-btn {
+      background: #6c757d;
+    }
+    .prev-btn:hover {
+      background: #5a6268;
+    }
+    
     .toggle-link {
       color: #667eea;
       cursor: pointer;
@@ -121,6 +240,7 @@
     }
     .error { color: #dc3545; }
     .success { color: #28a745; }
+    
     @media (max-width: 600px) {
       .container {
         max-width: 98vw;
@@ -137,6 +257,7 @@
         min-width: 0;
       }
     }
+    
     .multi-select {
       min-height: 48px;
       border: 1px solid #ccd6f6;
@@ -200,30 +321,47 @@
       background: #e0e7ff;
       color: #4c51bf;
     }
-    /* Address autocomplete suggestions */
-    .address-suggestions {
-      position: absolute;
-      left: 0;
-      top: 100%;
-      margin-top: 0.2rem;
-      background: #fff;
-      border: 1px solid #ccd6f6;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(102,126,234,0.08);
-      z-index: 10;
-      min-width: 220px;
-      max-height: 180px;
-      overflow-y: auto;
+    
+    /* Condition buttons */
+    .condition-buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.8rem;
+      margin-top: 1rem;
     }
-    .address-suggestion {
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-      font-size: 1.02rem;
+    .condition-btn {
+      padding: 0.8rem 1rem;
+      border: 2px solid #ccd6f6;
+      background: #f8f9fa;
       color: #333;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      text-align: center;
     }
-    .address-suggestion:hover, .address-suggestion.active {
+    .condition-btn:hover {
+      border-color: #667eea;
       background: #e0e7ff;
-      color: #4c51bf;
+    }
+    .condition-btn.selected {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+    .condition-btn.none-btn {
+      background: #28a745;
+      color: white;
+      border-color: #28a745;
+    }
+    .condition-btn.none-btn:hover {
+      background: #218838;
+      border-color: #218838;
+    }
+    .condition-btn.none-btn.selected {
+      background: #218838;
+      border-color: #218838;
     }
   </style>
   <!-- Firebase SDKs -->
@@ -235,18 +373,58 @@
 <body>
   <div class="container">
     <h2 id="formTitle">Login to OpenCare</h2>
+    
+    <!-- Progress Bar -->
+    <div class="progress-container" id="progressContainer">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-text" id="progressText">Step 1 of 7</div>
+    </div>
+    
+    <!-- Step Navigation -->
+    <div class="step-nav" id="stepNav">
+      <button type="button" class="step-btn" id="prevBtn">Previous</button>
+      <button type="button" class="step-btn" id="nextBtn">Next</button>
+    </div>
+    
     <form id="authForm">
-      <div id="registerFields" style="display:none;">
+      <!-- Login Form (Step 0) -->
+      <div class="step active" id="step0">
+        <div class="field-group" style="flex-direction: column; gap: 1rem;">
+          <div class="field" style="flex-basis: 100%;">
+            <label for="loginEmailField">Email</label>
+            <input type="email" id="loginEmailField" placeholder="Enter your email" required autocomplete="email" />
+          </div>
+          <div class="field" style="flex-basis: 100%;">
+            <label for="loginPasswordField">Password</label>
+            <input type="password" id="loginPasswordField" placeholder="Enter your password" required autocomplete="current-password" />
+          </div>
+        </div>
+        <button type="submit" id="submitBtn" class="register-btn">Login</button>
+        <button type="button" onclick="testLogin()" style="margin-top: 1rem; background: #28a745;">Test Login</button>
+      </div>
+      
+      <!-- Registration Steps -->
+      <div class="step" id="step1">
         <div class="section">
-          <div class="section-title">Personal Info</div>
+          <div class="section-title">Basic Information</div>
           <div class="field-group">
             <div class="field">
-              <label for="nameField">Full Name</label>
-              <input type="text" id="nameField" autocomplete="name" />
+              <label for="firstNameField">First Name *</label>
+              <input type="text" id="firstNameField" autocomplete="given-name" required />
             </div>
             <div class="field">
-              <label for="dobField">Date of Birth</label>
-              <input type="date" id="dobField" />
+              <label for="lastNameField">Last Name *</label>
+              <input type="text" id="lastNameField" autocomplete="family-name" required />
+            </div>
+            <div class="field">
+              <label for="dobField">Date of Birth *</label>
+              <input type="date" id="dobField" required />
+            </div>
+            <div class="field">
+              <label for="phoneField">Phone Number *</label>
+              <input type="tel" id="phoneField" autocomplete="tel" required />
             </div>
             <div class="field">
               <label for="genderField">Gender</label>
@@ -258,22 +436,101 @@
                 <option value="Prefer not to say">Prefer not to say</option>
               </select>
             </div>
-            <div class="field">
-              <label for="phoneField">Phone Number</label>
-              <input type="tel" id="phoneField" autocomplete="tel" />
-            </div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 1rem;">
+          <button type="button" class="prev-btn" onclick="prevStep()">Previous</button>
+          <button type="button" class="next-btn" onclick="nextStep()">Next</button>
+        </div>
+      </div>
+      
+      <div class="step" id="step2">
+        <div class="section">
+          <div class="section-title">Address Information</div>
+          <div class="field-group">
             <div class="field" style="flex-basis:100%;">
-              <label for="addressField">Address</label>
-              <input type="text" id="addressField" autocomplete="street-address" />
+              <label for="streetField">Street Address</label>
+              <input type="text" id="streetField" autocomplete="street-address" />
+            </div>
+            <div class="field">
+              <label for="cityField">City</label>
+              <input type="text" id="cityField" autocomplete="address-level2" />
+            </div>
+            <div class="field">
+              <label for="stateField">State</label>
+              <select id="stateField" autocomplete="address-level1">
+                <option value="">Select State</option>
+                <option value="AL">Alabama</option>
+                <option value="AK">Alaska</option>
+                <option value="AZ">Arizona</option>
+                <option value="AR">Arkansas</option>
+                <option value="CA">California</option>
+                <option value="CO">Colorado</option>
+                <option value="CT">Connecticut</option>
+                <option value="DE">Delaware</option>
+                <option value="FL">Florida</option>
+                <option value="GA">Georgia</option>
+                <option value="HI">Hawaii</option>
+                <option value="ID">Idaho</option>
+                <option value="IL">Illinois</option>
+                <option value="IN">Indiana</option>
+                <option value="IA">Iowa</option>
+                <option value="KS">Kansas</option>
+                <option value="KY">Kentucky</option>
+                <option value="LA">Louisiana</option>
+                <option value="ME">Maine</option>
+                <option value="MD">Maryland</option>
+                <option value="MA">Massachusetts</option>
+                <option value="MI">Michigan</option>
+                <option value="MN">Minnesota</option>
+                <option value="MS">Mississippi</option>
+                <option value="MO">Missouri</option>
+                <option value="MT">Montana</option>
+                <option value="NE">Nebraska</option>
+                <option value="NV">Nevada</option>
+                <option value="NH">New Hampshire</option>
+                <option value="NJ">New Jersey</option>
+                <option value="NM">New Mexico</option>
+                <option value="NY">New York</option>
+                <option value="NC">North Carolina</option>
+                <option value="ND">North Dakota</option>
+                <option value="OH">Ohio</option>
+                <option value="OK">Oklahoma</option>
+                <option value="OR">Oregon</option>
+                <option value="PA">Pennsylvania</option>
+                <option value="RI">Rhode Island</option>
+                <option value="SC">South Carolina</option>
+                <option value="SD">South Dakota</option>
+                <option value="TN">Tennessee</option>
+                <option value="TX">Texas</option>
+                <option value="UT">Utah</option>
+                <option value="VT">Vermont</option>
+                <option value="VA">Virginia</option>
+                <option value="WA">Washington</option>
+                <option value="WV">West Virginia</option>
+                <option value="WI">Wisconsin</option>
+                <option value="WY">Wyoming</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="zipField">ZIP Code</label>
+              <input type="text" id="zipField" autocomplete="postal-code" maxlength="10" />
             </div>
           </div>
         </div>
+        <div style="display: flex; gap: 1rem;">
+          <button type="button" class="prev-btn" onclick="prevStep()">Previous</button>
+          <button type="button" class="next-btn" onclick="nextStep()">Next</button>
+        </div>
+      </div>
+      
+      <div class="step" id="step3">
         <div class="section">
-          <div class="section-title">Insurance</div>
+          <div class="section-title">Insurance Information</div>
           <div class="field-group">
             <div class="field">
-              <label for="insuranceProviderField">Insurance Provider</label>
-              <select id="insuranceProviderField">
+              <label for="insuranceProviderField">Insurance Provider *</label>
+              <select id="insuranceProviderField" required>
                 <option value="">Select</option>
                 <option value="Aetna">Aetna</option>
                 <option value="Blue Cross">Blue Cross</option>
@@ -290,338 +547,607 @@
             </div>
           </div>
         </div>
-        <div class="section">
-          <div class="section-title">Emergency</div>
-          <div class="field-group">
-            <div class="field">
-              <label for="emergencyContactNameField">Emergency Contact Name</label>
-              <input type="text" id="emergencyContactNameField" />
-            </div>
-            <div class="field">
-              <label for="emergencyContactPhoneField">Emergency Contact Phone</label>
-              <input type="tel" id="emergencyContactPhoneField" />
-            </div>
-          </div>
+        <div style="display: flex; gap: 1rem;">
+          <button type="button" class="prev-btn" onclick="prevStep()">Previous</button>
+          <button type="button" class="next-btn" onclick="nextStep()">Next</button>
         </div>
+      </div>
+      
+      <div class="step" id="step4">
         <div class="section">
-          <div class="section-title">Health</div>
+          <div class="section-title">Allergies</div>
           <div class="field-group">
-            <div class="field">
-              <label for="primaryPhysicianField">Primary Physician</label>
-              <input type="text" id="primaryPhysicianField" />
-            </div>
             <div class="field">
               <label for="allergiesField">Known Allergies</label>
               <input type="text" id="allergiesField" />
             </div>
-            <div class="field">
-              <label for="chronicConditionsField">Chronic Conditions</label>
-              <div id="chronicConditionsMulti" class="multi-select"></div>
-              <input type="hidden" id="chronicConditionsField" />
+          </div>
+        </div>
+        <div style="display: flex; gap: 1rem;">
+          <button type="button" class="prev-btn" onclick="prevStep()">Previous</button>
+          <button type="button" class="next-btn" onclick="nextStep()">Next</button>
+        </div>
+      </div>
+      
+      <div class="step" id="step5">
+        <div class="section">
+          <div class="section-title">Physical Measurements</div>
+          <div class="field-group">
+            <div class="field" style="flex-basis:100%;">
+              <label for="heightField">Height</label>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <select id="heightFeetField" style="flex:1; min-width:70px;"></select>
+                <span>ft</span>
+                <select id="heightInchesField" style="flex:1; min-width:70px;"></select>
+                <span>in</span>
+              </div>
             </div>
-            <div class="field">
-              <label for="heightField">Height (e.g., 170 cm)</label>
-              <input type="text" id="heightField" />
-            </div>
-            <div class="field">
-              <label for="weightField">Weight (e.g., 65 kg)</label>
-              <input type="text" id="weightField" />
-            </div>
-            <div class="field">
-              <label for="bloodTypeField">Blood Type</label>
-              <select id="bloodTypeField">
-                <option value="">Select</option>
-                <option value="A+">A+</option>
-                <option value="A-">A-</option>
-                <option value="B+">B+</option>
-                <option value="B-">B-</option>
-                <option value="AB+">AB+</option>
-                <option value="AB-">AB-</option>
-                <option value="O+">O+</option>
-                <option value="O-">O-</option>
-                <option value="Unknown">Unknown</option>
-              </select>
+            <div class="field" style="flex-basis:100%;">
+              <label for="weightField">Weight</label>
+              <div class="weight-container">
+                <div class="weight-input" id="weightInput" onclick="toggleWeightDropdown()">
+                  <span id="weightDisplay">Select weight</span>
+                  <span>▼</span>
+                </div>
+                <div class="weight-dropdown" id="weightDropdown"></div>
+              </div>
             </div>
           </div>
         </div>
+        <div style="display: flex; gap: 1rem;">
+          <button type="button" class="prev-btn" onclick="prevStep()">Previous</button>
+          <button type="button" class="next-btn" onclick="nextStep()">Next</button>
+        </div>
       </div>
-      <input type="email" id="emailField" placeholder="Email" required autocomplete="email" />
-      <input type="password" id="passwordField" placeholder="Password" required autocomplete="current-password" />
-      <button type="submit" id="submitBtn" class="register-btn">Login</button>
+      
+      <div class="step" id="step6">
+        <div class="section">
+          <div class="section-title">Chronic Conditions</div>
+          <div class="field-group">
+            <div class="field" style="flex-basis:100%;">
+              <label>Select any chronic conditions you have:</label>
+              <div class="condition-buttons" id="conditionButtons">
+                <!-- Buttons will be populated by JavaScript -->
+              </div>
+              <div class="field" style="margin-top: 1rem;">
+                <label for="otherConditionsField">Other conditions (optional)</label>
+                <input type="text" id="otherConditionsField" placeholder="Type any other conditions..." />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 1rem;">
+          <button type="button" class="prev-btn" onclick="prevStep()">Previous</button>
+          <button type="button" class="next-btn" onclick="nextStep()">Next</button>
+        </div>
+      </div>
+      
+      <div class="step" id="step7">
+        <div class="section">
+          <div class="section-title">Account Setup</div>
+          <div class="field-group">
+            <div class="field">
+              <label for="emailField">Email *</label>
+              <input type="email" id="emailField" autocomplete="email" required />
+              <small style="color: #667eea; font-size: 0.85rem; margin-top: 0.3rem; display: block;">This will be used for login</small>
+            </div>
+            <div class="field">
+              <label for="passwordField">Password *</label>
+              <input type="password" id="passwordField" autocomplete="new-password" required />
+              <small style="color: #667eea; font-size: 0.85rem; margin-top: 0.3rem; display: block;">This will be used for login</small>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 1rem;">
+          <button type="button" class="prev-btn" onclick="prevStep()">Previous</button>
+          <button type="button" class="register-btn" onclick="completeRegistration()">Complete Registration</button>
+        </div>
+      </div>
     </form>
+    
     <div class="toggle-link" id="toggleLink">Don't have an account? Register</div>
     <div class="message" id="authMessage"></div>
   </div>
+  
   <script>
-    // Use firebase.auth() directly, do not redeclare 'auth'
+    // Form state
+    let currentStep = 0;
+    let isRegister = false;
+    let selectedWeight = '';
+    let selectedConditions = new Set();
+    
+    // DOM elements
     const form = document.getElementById('authForm');
-    const nameField = document.getElementById('nameField');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const stepNav = document.getElementById('stepNav');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    
+    // Form fields
+    const firstNameField = document.getElementById('firstNameField');
+    const lastNameField = document.getElementById('lastNameField');
     const dobField = document.getElementById('dobField');
     const genderField = document.getElementById('genderField');
     const phoneField = document.getElementById('phoneField');
-    const addressField = document.getElementById('addressField');
+    const streetField = document.getElementById('streetField');
+    const cityField = document.getElementById('cityField');
+    const stateField = document.getElementById('stateField');
+    const zipField = document.getElementById('zipField');
     const insuranceProviderField = document.getElementById('insuranceProviderField');
     const insuranceMemberIdField = document.getElementById('insuranceMemberIdField');
-    const emergencyContactNameField = document.getElementById('emergencyContactNameField');
-    const emergencyContactPhoneField = document.getElementById('emergencyContactPhoneField');
-    const primaryPhysicianField = document.getElementById('primaryPhysicianField');
     const allergiesField = document.getElementById('allergiesField');
-    const heightField = document.getElementById('heightField');
-    const weightField = document.getElementById('weightField');
-    const bloodTypeField = document.getElementById('bloodTypeField');
+    const otherConditionsField = document.getElementById('otherConditionsField');
+    const heightFeetField = document.getElementById('heightFeetField');
+    const heightInchesField = document.getElementById('heightInchesField');
+    const weightInput = document.getElementById('weightInput');
+    const weightDisplay = document.getElementById('weightDisplay');
+    const weightDropdown = document.getElementById('weightDropdown');
     const emailField = document.getElementById('emailField');
     const passwordField = document.getElementById('passwordField');
+    const loginEmailField = document.getElementById('loginEmailField');
+    const loginPasswordField = document.getElementById('loginPasswordField');
     const submitBtn = document.getElementById('submitBtn');
     const toggleLink = document.getElementById('toggleLink');
     const authMessage = document.getElementById('authMessage');
     const formTitle = document.getElementById('formTitle');
 
-    let isRegister = false;
+    // Validation functions
+    function validateStep(step) {
+      switch(step) {
+        case 1:
+          if (!firstNameField.value.trim()) {
+            showError('Please enter your first name');
+            return false;
+          }
+          if (!lastNameField.value.trim()) {
+            showError('Please enter your last name');
+            return false;
+          }
+          if (!dobField.value) {
+            showError('Please select your date of birth');
+            return false;
+          }
+          if (!phoneField.value.trim()) {
+            showError('Please enter your phone number');
+            return false;
+          }
+          break;
+        case 3:
+          if (!insuranceProviderField.value) {
+            showError('Please select an insurance provider');
+            return false;
+          }
+          break;
+        case 6:
+          if (selectedConditions.size === 0) {
+            showError('Please select at least one option (or "None") for chronic conditions');
+            return false;
+          }
+          break;
+        case 7:
+          if (!emailField.value.trim()) {
+            showError('Please enter your email address');
+            return false;
+          }
+          if (!passwordField.value) {
+            showError('Please enter a password');
+            return false;
+          }
+          if (passwordField.value.length < 6) {
+            showError('Password must be at least 6 characters long');
+            return false;
+          }
+          break;
+      }
+      return true;
+    }
+    
+    function showError(message) {
+      authMessage.textContent = message;
+      authMessage.className = 'message error';
+      setTimeout(() => {
+        authMessage.textContent = '';
+        authMessage.className = 'message';
+      }, 3000);
+    }
 
+    // Initialize form
+    function initForm() {
+      // Populate height dropdowns
+      for (let ft = 4; ft <= 7; ft++) {
+        const opt = document.createElement('option');
+        opt.value = ft;
+        opt.textContent = ft;
+        heightFeetField.appendChild(opt);
+      }
+      for (let inch = 0; inch <= 11; inch++) {
+        const opt = document.createElement('option');
+        opt.value = inch;
+        opt.textContent = inch;
+        heightInchesField.appendChild(opt);
+      }
+      
+      // Populate weight dropdown
+      for (let w = 80; w <= 400; w++) {
+        const opt = document.createElement('div');
+        opt.className = 'weight-option';
+        opt.textContent = w + ' lbs';
+        opt.onclick = () => selectWeight(w);
+        weightDropdown.appendChild(opt);
+      }
+      
+      // Close weight dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!weightInput.contains(e.target) && !weightDropdown.contains(e.target)) {
+          weightDropdown.style.display = 'none';
+        }
+      });
+      
+      // Setup condition buttons
+      setupConditionButtons();
+      
+      // Setup navigation button handlers
+      prevBtn.onclick = prevStep;
+      nextBtn.onclick = nextStep;
+    }
+    
+    // Setup condition buttons
+    function setupConditionButtons() {
+      const conditionButtons = document.getElementById('conditionButtons');
+      const conditions = [
+        'Hypertension', 'Diabetes', 'Asthma', 'Heart Disease', 'Arthritis',
+        'Depression', 'Anxiety', 'Obesity', 'High Cholesterol', 'Thyroid Disease',
+        'Cancer', 'Stroke', 'Kidney Disease', 'Liver Disease', 'COPD',
+        'Epilepsy', 'Migraine', 'Fibromyalgia', 'Lupus', 'Multiple Sclerosis'
+      ];
+      
+      // Add "None" button first
+      const noneBtn = document.createElement('button');
+      noneBtn.type = 'button';
+      noneBtn.className = 'condition-btn none-btn';
+      noneBtn.textContent = 'None';
+      noneBtn.dataset.condition = 'None';
+      noneBtn.onclick = () => selectCondition('None');
+      conditionButtons.appendChild(noneBtn);
+      
+      // Add condition buttons
+      conditions.forEach(condition => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'condition-btn';
+        btn.textContent = condition;
+        btn.dataset.condition = condition;
+        btn.onclick = () => selectCondition(condition);
+        conditionButtons.appendChild(btn);
+      });
+    }
+    
+    // Handle condition selection
+    function selectCondition(condition) {
+      console.log('Selecting condition:', condition);
+      if (condition === 'None') {
+        // If "None" is selected, clear all other selections
+        selectedConditions.clear();
+        selectedConditions.add('None');
+        document.querySelectorAll('.condition-btn').forEach(btn => {
+          btn.classList.remove('selected');
+        });
+        document.querySelector('.none-btn').classList.add('selected');
+      } else {
+        // If a condition is selected, remove "None" and add the condition
+        selectedConditions.delete('None');
+        document.querySelector('.none-btn').classList.remove('selected');
+        
+        if (selectedConditions.has(condition)) {
+          selectedConditions.delete(condition);
+          document.querySelector(`[data-condition="${condition}"]`).classList.remove('selected');
+        } else {
+          selectedConditions.add(condition);
+          document.querySelector(`[data-condition="${condition}"]`).classList.add('selected');
+        }
+      }
+      console.log('Selected conditions:', Array.from(selectedConditions));
+    }
+    
+    // Weight dropdown functions
+    function toggleWeightDropdown() {
+      weightDropdown.style.display = weightDropdown.style.display === 'block' ? 'none' : 'block';
+    }
+    
+    function selectWeight(weight) {
+      selectedWeight = weight;
+      weightDisplay.textContent = weight + ' lbs';
+      weightDropdown.style.display = 'none';
+    }
+    
+    // Step navigation
+    function showStep(step) {
+      // Hide all steps
+      for (let i = 0; i <= 7; i++) {
+        document.getElementById(`step${i}`).classList.remove('active');
+      }
+      
+      // Show current step
+      document.getElementById(`step${step}`).classList.add('active');
+      
+      // Update progress
+      const progress = ((step - 1) / 6) * 100;
+      progressFill.style.width = progress + '%';
+      progressText.textContent = `Step ${step} of 7`;
+      
+      // Update navigation
+      prevBtn.disabled = step <= 1;
+      if (step >= 7) {
+        nextBtn.style.display = 'none';
+        prevBtn.style.display = 'inline-block';
+      } else {
+        nextBtn.style.display = 'inline-block';
+        prevBtn.style.display = 'inline-block';
+      }
+    }
+    
+    function nextStep() {
+      if (currentStep < 7 && validateStep(currentStep)) {
+        currentStep++;
+        showStep(currentStep);
+        authMessage.textContent = '';
+        authMessage.className = 'message';
+      }
+    }
+    
+    function prevStep() {
+      if (currentStep > 1) {
+        currentStep--;
+        showStep(currentStep);
+        authMessage.textContent = '';
+        authMessage.className = 'message';
+      }
+    }
+    
+    // Toggle between login and register
     toggleLink.onclick = () => {
       isRegister = !isRegister;
       if (isRegister) {
-        document.getElementById('registerFields').style.display = 'block';
-        submitBtn.textContent = 'Register';
+        currentStep = 1;
+        showStep(1);
+        progressContainer.style.display = 'block';
+        stepNav.style.display = 'flex';
         formTitle.textContent = 'Register for OpenCare';
         toggleLink.textContent = 'Already have an account? Login';
-        passwordField.setAttribute('autocomplete', 'new-password');
       } else {
-        document.getElementById('registerFields').style.display = 'none';
-        submitBtn.textContent = 'Login';
+        currentStep = 0;
+        showStep(0);
+        progressContainer.style.display = 'none';
+        stepNav.style.display = 'none';
         formTitle.textContent = 'Login to OpenCare';
         toggleLink.textContent = "Don't have an account? Register";
-        passwordField.setAttribute('autocomplete', 'current-password');
       }
-      authMessage.textContent = '';
-    };
-
-    // Chronic conditions multi-select with autocomplete and synonym mapping
-    const chronicConditionsList = [
-      { canonical: 'Hypertension', synonyms: ['BP', 'HTN', 'High Blood Pressure', 'Hypertension'] },
-      { canonical: 'Diabetes', synonyms: ['DM', 'Diabetes Mellitus', 'Sugar', 'Diabetes'] },
-      { canonical: 'Asthma', synonyms: ['Asthma'] },
-      { canonical: 'COPD', synonyms: ['Chronic Obstructive Pulmonary Disease', 'COPD'] },
-      { canonical: 'Coronary Artery Disease', synonyms: ['CAD', 'Heart Disease', 'Coronary Artery Disease'] },
-      { canonical: 'Chronic Kidney Disease', synonyms: ['CKD', 'Kidney Disease', 'Chronic Kidney Disease'] },
-      { canonical: 'Hyperlipidemia', synonyms: ['High Cholesterol', 'Hyperlipidemia'] },
-      { canonical: 'Hypothyroidism', synonyms: ['Hypothyroidism'] },
-      { canonical: 'Depression', synonyms: ['Depression'] },
-      { canonical: 'Anxiety', synonyms: ['Anxiety'] },
-      { canonical: 'Arthritis', synonyms: ['Arthritis'] },
-      { canonical: 'Cancer', synonyms: ['Cancer'] },
-      { canonical: 'Obesity', synonyms: ['Obesity'] },
-      { canonical: 'Other', synonyms: [] }
-    ];
-    function canonicalizeCondition(input) {
-      const val = input.trim().toLowerCase();
-      for (const cond of chronicConditionsList) {
-        if (cond.synonyms.some(s => s.toLowerCase() === val)) return cond.canonical;
-      }
-      return input.trim();
-    }
-    function getConditionSuggestions(input, selected) {
-      const val = input.trim().toLowerCase();
-      if (!val) return chronicConditionsList.map(c => c.canonical).filter(c => !selected.includes(c));
-      return chronicConditionsList
-        .filter(c => c.synonyms.some(s => s.toLowerCase().includes(val)) || c.canonical.toLowerCase().includes(val))
-        .map(c => c.canonical)
-        .filter(c => !selected.includes(c));
-    }
-    function setupMultiSelect(id, hiddenId) {
-      const container = document.getElementById(id);
-      const hidden = document.getElementById(hiddenId);
-      let selected = [];
-      let input = document.createElement('input');
-      input.type = 'text';
-      input.placeholder = 'Type or select...';
-      input.autocomplete = 'off';
-      container.appendChild(input);
-      let suggestionsBox = null;
-      function render() {
-        container.innerHTML = '';
-        selected.forEach(val => {
-          const tag = document.createElement('span');
-          tag.className = 'multi-tag';
-          tag.textContent = val;
-          const remove = document.createElement('button');
-          remove.className = 'multi-tag-remove';
-          remove.innerHTML = '&times;';
-          remove.onclick = e => {
-            e.preventDefault();
-            selected = selected.filter(v => v !== val);
-            render();
-          };
-          tag.appendChild(remove);
-          container.appendChild(tag);
-        });
-        container.appendChild(input);
-        hidden.value = selected.join(', ');
-      }
-      function showSuggestions() {
-        if (suggestionsBox) suggestionsBox.remove();
-        suggestionsBox = document.createElement('div');
-        suggestionsBox.className = 'multi-suggestions';
-        const suggestions = getConditionSuggestions(input.value, selected);
-        suggestions.forEach((s, idx) => {
-          const item = document.createElement('div');
-          item.className = 'multi-suggestion';
-          item.textContent = s;
-          item.onclick = () => {
-            if (!selected.includes(s)) selected.push(s);
-            input.value = '';
-            render();
-            suggestionsBox.remove();
-            suggestionsBox = null;
-            input.focus();
-          };
-          suggestionsBox.appendChild(item);
-        });
-        if (input.value && !suggestions.includes(input.value)) {
-          // Allow free text
-          const item = document.createElement('div');
-          item.className = 'multi-suggestion';
-          item.textContent = 'Other: ' + input.value;
-          item.onclick = () => {
-            const canon = canonicalizeCondition(input.value);
-            if (!selected.includes(canon)) selected.push(canon);
-            input.value = '';
-            render();
-            suggestionsBox.remove();
-            suggestionsBox = null;
-            input.focus();
-          };
-          suggestionsBox.appendChild(item);
-        }
-        if (suggestions.length > 0 || input.value) {
-          // Append to the .field container, not the multi-select, to avoid clipping
-          container.parentElement.appendChild(suggestionsBox);
-        }
-      }
-      input.oninput = showSuggestions;
-      input.onfocus = showSuggestions;
-      input.onblur = () => setTimeout(() => { if (suggestionsBox) suggestionsBox.remove(); }, 150);
-      input.onkeydown = e => {
-        if (e.key === 'Enter' && input.value) {
-          const canon = canonicalizeCondition(input.value);
-          if (!selected.includes(canon)) selected.push(canon);
-          input.value = '';
-          render();
-          if (suggestionsBox) suggestionsBox.remove();
-          suggestionsBox = null;
-          e.preventDefault();
-        }
-      };
-      render();
-      return {
-        getSelected: () => selected,
-        setSelected: vals => { selected = vals; render(); }
-      };
-    }
-    let chronicMulti = null;
-    document.addEventListener('DOMContentLoaded', () => {
-      chronicMulti = setupMultiSelect('chronicConditionsMulti', 'chronicConditionsField');
-    });
-
-    form.onsubmit = async (e) => {
-      e.preventDefault();
-      const email = emailField.value.trim();
-      const password = passwordField.value;
-      const name = nameField.value.trim();
-      const dob = dobField.value;
-      const gender = genderField.value;
-      const phone = phoneField.value.trim();
-      const address = addressField.value.trim();
-      const insuranceProvider = insuranceProviderField.value;
-      const insuranceMemberId = insuranceMemberIdField.value.trim();
-      const emergencyContactName = emergencyContactNameField.value.trim();
-      const emergencyContactPhone = emergencyContactPhoneField.value.trim();
-      const primaryPhysician = primaryPhysicianField.value.trim();
-      const allergies = allergiesField.value.trim();
-      const chronicConditions = chronicMulti.getSelected().map(canonicalizeCondition).join(', ');
-      const height = heightField.value.trim();
-      const weight = weightField.value.trim();
-      const bloodType = bloodTypeField.value;
       authMessage.textContent = '';
       authMessage.className = 'message';
-      try {
-        if (isRegister) {
-          // Register new user
-          const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
-          await userCredential.user.updateProfile({ displayName: name });
-          // Save extra profile fields to Firestore
-          await firebaseClient.setUserProfile({
-            fullName: name,
-            dateOfBirth: dob,
-            gender,
-            phone,
-            address,
-            insuranceProvider,
-            insuranceMemberId,
-            emergencyContactName,
-            emergencyContactPhone,
-            primaryPhysician,
-            allergies,
-            chronicConditions,
-            height,
-            weight,
-            bloodType
-          });
-          authMessage.textContent = 'Registration successful! Redirecting...';
-          authMessage.classList.add('success');
-          setTimeout(() => { window.location.href = '/'; }, 1200);
-        } else {
-          // Login existing user
-          await firebase.auth().signInWithEmailAndPassword(email, password);
-          authMessage.textContent = 'Login successful! Redirecting...';
-          authMessage.classList.add('success');
-          setTimeout(() => { window.location.href = '/'; }, 1200);
-        }
-      } catch (err) {
-        authMessage.textContent = err.message;
-        authMessage.classList.add('error');
-      }
     };
 
-    // Address autocomplete using Nominatim/OSM for registration
-    const regAddressInput = document.getElementById('addressField');
-    let regAddressTimeout = null;
-    let regAddressSuggestionsBox = null;
-    function showRegAddressSuggestions(suggestions) {
-      if (regAddressSuggestionsBox) regAddressSuggestionsBox.remove();
-      regAddressSuggestionsBox = document.createElement('div');
-      regAddressSuggestionsBox.className = 'address-suggestions';
-      suggestions.forEach(s => {
-        const item = document.createElement('div');
-        item.className = 'address-suggestion';
-        item.textContent = s.display_name;
-        item.onclick = () => {
-          regAddressInput.value = s.display_name;
-          regAddressSuggestionsBox.remove();
-          regAddressSuggestionsBox = null;
-        };
-        regAddressSuggestionsBox.appendChild(item);
-      });
-      if (suggestions.length > 0) {
-        regAddressInput.parentElement.appendChild(regAddressSuggestionsBox);
+    // Initialize form
+    initForm();
+    
+    // Test Firebase connection
+    async function testFirebase() {
+      try {
+        console.log('Testing Firebase connection...');
+        const auth = firebase.auth();
+        console.log('Firebase auth available:', !!auth);
+        const firestore = firebase.firestore();
+        console.log('Firebase firestore available:', !!firestore);
+        return true;
+      } catch (error) {
+        console.error('Firebase test failed:', error);
+        return false;
       }
     }
-    regAddressInput.addEventListener('input', function() {
-      if (regAddressSuggestionsBox) regAddressSuggestionsBox.remove();
-      if (regAddressTimeout) clearTimeout(regAddressTimeout);
-      const val = regAddressInput.value.trim();
-      if (!val) return;
-      regAddressTimeout = setTimeout(async () => {
+    
+    // Run Firebase test on page load
+    testFirebase();
+    
+    // Complete registration function
+    async function completeRegistration() {
+      console.log('=== COMPLETE REGISTRATION START ===');
+      console.log('Current step:', currentStep);
+      console.log('Is register mode:', isRegister);
+      
+      // Check Firebase initialization
+      if (!checkFirebase()) {
+        console.log('Firebase check failed');
+        return;
+      }
+      
+      // Validate final step
+      if (!validateStep(7)) {
+        console.log('Step 7 validation failed');
+        return;
+      }
+      
+      try {
+        console.log('Attempting registration with:', emailField.value);
+        if (!emailField.value || !passwordField.value) {
+          throw new Error('Please enter both email and password');
+        }
+        
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(emailField.value, passwordField.value);
+        const user = userCredential.user;
+        console.log('User created successfully:', user.uid);
+        
+        // Prepare user data
+        const userData = {
+          firstName: firstNameField.value.trim(),
+          lastName: lastNameField.value.trim(),
+          dob: dobField.value,
+          gender: genderField.value,
+          phone: phoneField.value.trim(),
+          street: streetField.value.trim(),
+          city: cityField.value.trim(),
+          state: stateField.value,
+          zip: zipField.value.trim(),
+          insuranceProvider: insuranceProviderField.value,
+          insuranceMemberId: insuranceMemberIdField.value.trim(),
+          allergies: allergiesField.value.trim(),
+          chronicConditions: Array.from(selectedConditions).join(', ') + (otherConditionsField.value.trim() ? ', ' + otherConditionsField.value.trim() : ''),
+          height: `${heightFeetField.value} ft ${heightInchesField.value} in`,
+          weight: selectedWeight ? `${selectedWeight} lbs` : '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        console.log('Saving user data to Firestore:', userData);
+        // Save to Firestore
+        await firebase.firestore().collection('users').doc(user.uid).set(userData);
+        console.log('User data saved successfully');
+        
+        authMessage.textContent = 'Registration successful! Logging you in...';
+        authMessage.className = 'message success';
+        
+        // Automatically log the user in
+        await firebase.auth().signInWithEmailAndPassword(emailField.value, passwordField.value);
+        console.log('Auto-login successful, redirecting to index');
+        
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1500);
+        
+      } catch (error) {
+        console.error('=== REGISTRATION ERROR ===');
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+        console.error('Full error:', error);
+        console.error('=== REGISTRATION ERROR END ===');
+        authMessage.textContent = error.message;
+        authMessage.className = 'message error';
+      }
+    }
+    
+    // Test login function for debugging
+    async function testLogin() {
+      try {
+        console.log('=== TEST LOGIN START ===');
+        console.log('Firebase available:', !!firebase);
+        console.log('Firebase auth available:', !!firebase.auth);
+        console.log('Login email:', loginEmailField.value);
+        console.log('Login password length:', loginPasswordField.value.length);
+        
+        if (!loginEmailField.value || !loginPasswordField.value) {
+          console.log('Missing email or password');
+          return;
+        }
+        
+        const result = await firebase.auth().signInWithEmailAndPassword(loginEmailField.value, loginPasswordField.value);
+        console.log('Login successful:', result);
+        console.log('User ID:', result.user.uid);
+        console.log('=== TEST LOGIN END ===');
+        
+        // Redirect to index
+        window.location.href = '/';
+      } catch (error) {
+        console.error('=== TEST LOGIN ERROR ===');
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+        console.error('Full error:', error);
+        console.error('=== TEST LOGIN ERROR END ===');
+      }
+    }
+    
+    // Check Firebase initialization
+    function checkFirebase() {
+      if (!firebase || !firebase.auth) {
+        console.error('Firebase not initialized properly');
+        authMessage.textContent = 'Error: Firebase not initialized. Please refresh the page.';
+        authMessage.className = 'message error';
+        return false;
+      }
+      return true;
+    }
+    
+    // Form submission
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      
+      // Check Firebase initialization
+      if (!checkFirebase()) {
+        return;
+      }
+      
+      if (!isRegister) {
+        // Login logic
         try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&addressdetails=1&limit=5`);
-          const data = await res.json();
-          showRegAddressSuggestions(data);
-        } catch {}
-      }, 350);
-    });
-    regAddressInput.addEventListener('blur', function() {
-      setTimeout(() => { if (regAddressSuggestionsBox) regAddressSuggestionsBox.remove(); }, 150);
-    });
+          console.log('Attempting login with:', loginEmailField.value);
+          if (!loginEmailField.value || !loginPasswordField.value) {
+            throw new Error('Please enter both email and password');
+          }
+          const userCredential = await firebase.auth().signInWithEmailAndPassword(loginEmailField.value, loginPasswordField.value);
+          console.log('Login successful, redirecting to index');
+          window.location.href = '/';
+        } catch (error) {
+          console.error('Login error:', error);
+          authMessage.textContent = error.message;
+          authMessage.className = 'message error';
+        }
+        return;
+      }
+      
+      // Registration logic - validate final step
+      if (!validateStep(7)) {
+        return;
+      }
+      
+      try {
+        console.log('Attempting registration with:', emailField.value);
+        if (!emailField.value || !passwordField.value) {
+          throw new Error('Please enter both email and password');
+        }
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(emailField.value, passwordField.value);
+        const user = userCredential.user;
+        console.log('User created successfully:', user.uid);
+        
+        // Prepare user data
+        const userData = {
+          firstName: firstNameField.value.trim(),
+          lastName: lastNameField.value.trim(),
+          dob: dobField.value,
+          gender: genderField.value,
+          phone: phoneField.value.trim(),
+          street: streetField.value.trim(),
+          city: cityField.value.trim(),
+          state: stateField.value,
+          zip: zipField.value.trim(),
+          insuranceProvider: insuranceProviderField.value,
+          insuranceMemberId: insuranceMemberIdField.value.trim(),
+          allergies: allergiesField.value.trim(),
+          chronicConditions: Array.from(selectedConditions).join(', ') + (otherConditionsField.value.trim() ? ', ' + otherConditionsField.value.trim() : ''),
+          height: `${heightFeetField.value} ft ${heightInchesField.value} in`,
+          weight: selectedWeight ? `${selectedWeight} lbs` : '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        console.log('Saving user data to Firestore:', userData);
+        // Save to Firestore
+        await firebase.firestore().collection('users').doc(user.uid).set(userData);
+        console.log('User data saved successfully');
+        
+        authMessage.textContent = 'Registration successful! Logging you in...';
+        authMessage.className = 'message success';
+        
+        // Automatically log the user in
+        await firebase.auth().signInWithEmailAndPassword(emailField.value, passwordField.value);
+        console.log('Auto-login successful, redirecting to index');
+        
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1500);
+        
+      } catch (error) {
+        console.error('Registration error:', error);
+        authMessage.textContent = error.message;
+        authMessage.className = 'message error';
+      }
+    };
   </script>
 </body>
 </html> 

@@ -82,6 +82,16 @@
             line-height: 1.7;
             white-space: pre-wrap; /* Respects newlines in the summary */
         }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+        .error {
+            text-align: center;
+            padding: 2rem;
+            color: #dc3545;
+        }
         @media (max-width: 768px) {
             .visit-detail-grid {
                 grid-template-columns: 1fr;
@@ -102,6 +112,10 @@
             }
         }
     </style>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+    <script src="/js/firebase-client.js"></script>
 </head>
 <body>
     <div class="container">
@@ -111,53 +125,75 @@
         </div>
 
         <div class="card" id="visit-details-container">
-            <!-- Details will be loaded here -->
+            <div class="loading">Loading visit details...</div>
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             const visitDetailsContainer = document.getElementById('visit-details-container');
             
-            // Get visit ID from URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const visitId = urlParams.get('id');
+            // Check authentication first
+            firebase.auth().onAuthStateChanged(async function(user) {
+                if (!user) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                // Get visit ID from URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const visitId = urlParams.get('id');
 
-            if (!visitId) {
-                visitDetailsContainer.innerHTML = '<p>No visit ID provided.</p>';
-                return;
-            }
+                if (!visitId) {
+                    visitDetailsContainer.innerHTML = '<div class="error">No visit ID provided.</div>';
+                    return;
+                }
 
-            const visits = JSON.parse(localStorage.getItem('opencare_visits')) || [];
-            const visit = visits.find(v => v.id === visitId);
+                try {
+                    console.log('Loading visit with ID:', visitId);
+                    const visit = await firebaseClient.getVisitById(visitId);
+                    
+                    if (!visit) {
+                        visitDetailsContainer.innerHTML = '<div class="error">Visit not found.</div>';
+                        return;
+                    }
+                    
+                    // Check if the visit belongs to the current user
+                    if (visit.userId !== user.uid) {
+                        visitDetailsContainer.innerHTML = '<div class="error">You do not have permission to view this visit.</div>';
+                        return;
+                    }
 
-            if (!visit) {
-                visitDetailsContainer.innerHTML = '<p>Visit not found.</p>';
-                return;
-            }
+                    // Format the date
+                    const visitDate = visit.createdAt ? new Date(visit.createdAt.toDate ? visit.createdAt.toDate() : visit.createdAt).toLocaleDateString() : 'Unknown';
 
-            // Populate the details
-            visitDetailsContainer.innerHTML = `
-                <div class="visit-detail-grid">
-                    <div class="meta-data">
-                        <div class="meta-item">
-                            <div class="meta-label">Date of Visit</div>
-                            <div class="meta-value">${visit.date}</div>
+                    // Populate the details
+                    visitDetailsContainer.innerHTML = `
+                        <div class="visit-detail-grid">
+                            <div class="meta-data">
+                                <div class="meta-item">
+                                    <div class="meta-label">Date of Visit</div>
+                                    <div class="meta-value">${visitDate}</div>
+                                </div>
+                                <div class="meta-item">
+                                    <div class="meta-label">Medical Specialty</div>
+                                    <div class="meta-value">${visit.specialty || 'Uncategorized'}</div>
+                                </div>
+                            </div>
+                            <div class="summary-content">
+                                <h2>Summary</h2>
+                                <p>${visit.summary || 'No summary available.'}</p>
+                                <br>
+                                <h2>TL;DR</h2>
+                                <p>${visit.tldr || 'No TL;DR available.'}</p>
+                            </div>
                         </div>
-                        <div class="meta-item">
-                            <div class="meta-label">Medical Specialty</div>
-                            <div class="meta-value">${visit.specialty}</div>
-                        </div>
-                    </div>
-                    <div class="summary-content">
-                        <h2>Summary</h2>
-                        <p>${visit.summary}</p>
-                        <br>
-                        <h2>TL;DR</h2>
-                        <p>${visit.tldr}</p>
-                    </div>
-                </div>
-            `;
+                    `;
+                } catch (error) {
+                    console.error('Error loading visit:', error);
+                    visitDetailsContainer.innerHTML = '<div class="error">Error loading visit details: ' + error.message + '</div>';
+                }
+            });
         });
     </script>
 </body>
