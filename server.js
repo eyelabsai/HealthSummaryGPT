@@ -2,17 +2,18 @@
 
 import express from 'express';
 import multer from 'multer';
-import { createReadStream, renameSync, unlinkSync, existsSync } from 'fs';
-import OpenAI from 'openai';
+import { createReadStream, renameSync, unlinkSync, existsSync, writeFileSync, readFileSync } from 'fs';
+import OpenAI, { toFile } from 'openai';
 import path from 'path';
 import dotenv from 'dotenv';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { dirname, join } from 'path';
 import { userService, visitService, medicationService } from './services/firebase-service.js';
 import { Readable } from 'stream';
 import mime from 'mime-types';
-import { toFile } from "openai";
+import { tmpdir } from 'os';
+import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -59,40 +60,26 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'No audio file provided.' });
     }
 
-    console.log(`Processing audio: ${req.file.originalname} (${req.file.size} bytes)`);
+    const tmpIn  = join(tmpdir(), 'in.webm');
+    const tmpOut = join(tmpdir(), 'out.wav');
+    writeFileSync(tmpIn, req.file.buffer);
 
-    if (req.file.size > 50 * 1024 * 1024) {
-      return res.status(400).json({ success: false, error: 'Audio file too large (max 50 MB).' });
-    }
+    // -ar 16000  -> 16 kHz, -ac 1 -> mono
+    execFileSync(ffmpegInstaller.path, ['-y', '-i', tmpIn, '-ar', '16000', '-ac', '1', tmpOut]);
 
-    // Log the browser mimetype for debugging
-    console.log('Browser mimetype:', req.file.mimetype);
-    const ext = mime.extension(req.file.mimetype) || 'webm';
-    // turn the Buffer into a bona-fide File object the SDK can stream
-    const fileForOpenAI = await toFile(
-      req.file.buffer,
-      `recording.${ext}`,
-      { contentType: req.file.mimetype }
-    );
+    const wavBuffer = readFileSync(tmpOut);
+    const wavFile = await toFile(wavBuffer, 'recording.wav', { contentType: 'audio/wav' });
+
     const { text } = await openai.audio.transcriptions.create({
-      file: fileForOpenAI,
-      model: 'whisper-1',
-      language: 'en',
-      temperature: 0.3,
-      response_format: 'json'
+      file: wavFile,
+      model: 'whisper-1'
     });
-    console.log(`Transcription done – ${text.length} chars`);
-    res.json({ success: true, transcript: text });
 
+    unlinkSync(tmpIn); unlinkSync(tmpOut);
+    res.json({ success: true, transcript: text });
   } catch (err) {
     console.error('Transcription error:', err);
-
-    const msg =
-      err.message.includes('timeout') ? 'Audio processing timed out.'
-    : err.message.includes('too large') ? 'Audio file is too large.'
-    : 'Transcription failed.';
-
-    res.status(500).json({ success: false, error: msg });
+    res.status(500).json({ success: false, error: 'Transcription failed.' });
   }
 });
 
