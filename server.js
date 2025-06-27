@@ -1,19 +1,19 @@
-// server.js
+// server.js (Refactored for AWS)
 
 import express from 'express';
 import multer from 'multer';
-import { createReadStream, renameSync, unlinkSync, existsSync, writeFileSync, readFileSync } from 'fs';
-import OpenAI, { toFile } from 'openai';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { v4 as uuidv4 } from 'uuid';
+import axios from 'axios';
 import path from 'path';
 import dotenv from 'dotenv';
-import { execSync, execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { userService, visitService, medicationService } from './services/firebase-service.js';
-import { Readable } from 'stream';
-import mime from 'mime-types';
-import { tmpdir } from 'os';
-import ffmpegPath from 'ffmpeg-static';
+import { dirname } from 'path';
+
+// --- IMPORTANT ---
+// You will need to install the necessary AWS SDK v3 packages:
+// npm install @aws-sdk/client-s3 @aws-sdk/s3-request-presigner axios uuid
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -21,225 +21,112 @@ const __dirname = dirname(__filename);
 dotenv.config();
 const app = express();
 
-// Configure multer with file size limits for longer recordings
-const upload = multer({ 
-  storage: multer.memoryStorage(), // Use in-memory storage
-  limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB limit for longer recordings
-    files: 1
-  }
-});
-
-// Initialise OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
 // Serve static files from the "public" folder
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// Helper function to clean up temporary files
-function cleanupFiles(...filePaths) {
-  filePaths.forEach(filePath => {
-    if (existsSync(filePath)) {
-      try {
-        unlinkSync(filePath);
-        console.log(`Cleaned up: ${filePath}`);
-      } catch (err) {
-        console.error(`Failed to clean up ${filePath}:`, err);
-      }
-    }
-  });
-}
-
-// 1) Transcription endpoint
-app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, error: 'No audio file provided.' });
-    }
-
-    const tmpIn  = join(tmpdir(), 'in.webm');
-    const tmpOut = join(tmpdir(), 'out.wav');
-    writeFileSync(tmpIn, req.file.buffer);
-
-    // -ar 16000  -> 16 kHz, -ac 1 -> mono
-    execFileSync(ffmpegPath, ['-y', '-i', tmpIn, '-ar', '16000', '-ac', '1', tmpOut]);
-
-    const wavBuffer = readFileSync(tmpOut);
-    const wavFile = await toFile(wavBuffer, 'recording.wav', { contentType: 'audio/wav' });
-
-    const { text } = await openai.audio.transcriptions.create({
-      file: wavFile,
-      model: 'whisper-1'
-    });
-
-    unlinkSync(tmpIn); unlinkSync(tmpOut);
-    res.json({ success: true, transcript: text });
-  } catch (err) {
-    console.error('Transcription error:', err);
-    res.status(500).json({ success: false, error: 'Transcription failed.' });
-  }
+// =================================================================
+// AWS Configuration
+// These should be set in your .env file or environment variables
+// =================================================================
+const s3Client = new S3Client({
+    region: process.env.AWS_REGION || 'us-east-1',
+    // Ensure your server environment has AWS credentials configured
+    // (e.g., via IAM role, or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY in .env)
 });
 
-// 2) Summarisation endpoint
-app.post('/api/summarise', async (req, res) => {
-  try {
-    const { transcript } = req.body;
-    if (!transcript) {
-      return res.status(400).json({ success: false, error: 'No transcript provided.' });
-    }
+const RAW_AUDIO_BUCKET = process.env.RAW_AUDIO_BUCKET; // e.g., 'opencare-raw-audio-...'
+const AGENT_API_URL = process.env.AGENT_API_URL; // The API Gateway URL for your OpenCareAgent
 
-    const chatResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a medical summarization assistant. Please produce a detailed, structured, and comprehensive summary that captures all key details from the transcript. Your summary should not omit any information but should be succinct and easy to understand.'
-        },
-        {
-          role: 'user',
-          content: `Analyze the following medical transcript and return a JSON object with the following keys:
-{
-  "summary": "A robust, multi-sentence summary covering all the concepts discussed.",
-  "tldr": "A very short, one-sentence summary.",
-  "specialty": "A short phrase indicating the medical specialty (e.g., 'Ophthalmology')",
-  "date": "Extract the actual appointment/visit date. If the transcript mentions 'today', 'today's visit', 'today's appointment', or similar phrases indicating this is happening today, return 'TODAY'. If a specific date is mentioned (like 'March 15th'), return that date. If no date context is found, return 'Not specified'.",
-  "medications": [
-    {
-      "name": "Corrected medication name (fix any transcription spelling errors)",
-      "dosage": "e.g., 10mg",
-      "frequency": "e.g., daily, twice daily, every 8 hours",
-      "timing": "e.g., morning, evening, with meals, before bed",
-      "route": "e.g., oral, eye drops, topical",
-      "laterality": "e.g., left eye, right eye, both eyes (if applicable)",
-      "duration": "e.g., 7 days, until finished, ongoing",
-      "instructions": "Any special instructions like 'take with food', 'avoid alcohol', 'shake well'",
-      "fullInstructions": "Complete patient instructions combining all the above information"
-    }
-  ]
-}
+// =================================================================
+// Refactored Endpoints
+// =================================================================
 
-For medications, extract ALL available information including:
-- Exact dosage and frequency
-- Timing (when to take)
-- Route of administration
-- Eye laterality for eye medications
-- Duration of treatment
-- Special instructions or warnings
-- Combine everything into a clear, patient-friendly fullInstructions field
-
-IMPORTANT: Date Extraction
-- If the transcript mentions "today", "today's visit", "today's appointment", "during today's visit", etc., return "TODAY" (not the actual date)
-- If a specific date is mentioned (like "March 15th", "last week", "yesterday"), convert it to YYYY-MM-DD format
-- Look for context clues like "in today's appointment we discussed", "during this visit", "today I'm here for"
-- If no date context is found, return "Not specified"
-
-IMPORTANT: Medication Name Correction
-- If a medication name appears to be misspelled or phonetically transcribed incorrectly, correct it to the proper spelling
-- Common transcription errors include:
-  * Phonetic misspellings (e.g., "cosopt" transcribed as "cosoft", "cosopted")
-  * Similar-sounding letters (e.g., "b" vs "p", "f" vs "ph", "c" vs "k")
-  * Missing or extra syllables
-  * Common drug name variations
-- Use your medical knowledge to identify and correct medication names to their standard pharmaceutical spelling
-- Consider the medical specialty context to help identify the most likely medication
-- If you're unsure about a medication name, make your best educated guess based on context and common medications
-
-If no medications are mentioned, return an empty array for the "medications" key.
-
-Transcript:
-${transcript}`
-        }
-      ],
-      temperature: 0.4,
-      max_tokens: 800
-    });
-
-    const rawContent = chatResponse.choices[0].message.content.trim();
-
-    // If JSON is wrapped in code block
-    const match = rawContent.match(/```json\s*([\s\S]*?)```/);
-    const jsonText = match ? match[1].trim() : rawContent;
-
-    let parsed;
+/**
+ * 1) Generate Secure Upload URL Endpoint (Replaces /api/transcribe)
+ * This endpoint provides the frontend with a secure, one-time URL to upload an audio file directly to S3.
+ * This is more scalable and secure than routing the file through our server.
+ */
+app.post('/api/generate-upload-url', async (req, res) => {
     try {
-      parsed = JSON.parse(jsonText);
-    } catch (jsonErr) {
-      console.error('Failed to parse JSON:', jsonErr);
-      console.error('Raw model output:\n', rawContent);
-      return res.status(500).json({
-        success: false,
-        error: 'OpenAI summarization returned invalid JSON.',
-        rawResponse: rawContent
-      });
+        const { userId, fileType } = req.body;
+        if (!userId || !fileType) {
+            return res.status(400).json({ success: false, error: 'Missing userId or fileType.' });
+        }
+
+        // Generate a unique key for the file to prevent overwrites
+        const fileExtension = fileType.split('/')[1] || 'mp3'; // e.g., 'audio/mp3' -> 'mp3'
+        const visitId = uuidv4(); // A unique ID for this new visit
+        
+        // The key should include the user's ID to keep their data separate
+        const key = `private/${userId}/${visitId}/recording.${fileExtension}`;
+
+        const command = new PutObjectCommand({
+            Bucket: RAW_AUDIO_BUCKET,
+            Key: key,
+            ContentType: fileType,
+        });
+
+        // Generate the pre-signed URL which is valid for a short time (e.g., 5 minutes)
+        const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 });
+
+        console.log(`Generated upload URL for user ${userId}, visit ${visitId}`);
+
+        res.json({
+            success: true,
+            uploadUrl: uploadUrl,
+            visitId: visitId, // Send this back so the frontend knows the ID of the new visit
+            key: key // The path where the file will be stored
+        });
+
+    } catch (err) {
+        console.error('Error generating pre-signed URL:', err);
+        res.status(500).json({ success: false, error: 'Could not generate upload URL.' });
     }
-
-    let { summary, specialty, date, tldr, medications } = parsed;
-
-    // Always use today's date for new visits (since they're being recorded now)
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-
-    console.log('Setting visit date to today:', date);
-
-    return res.json({
-      success: true,
-      summary: summary || 'No summary available',
-      specialty: specialty || 'Specialty not identified',
-      date,
-      tldr: tldr || '',
-      medications: medications || []
-    });
-  } catch (err) {
-    console.error('Summarisation error:', err);
-    return res.status(500).json({ success: false, error: 'Summarisation failed.' });
-  }
 });
 
-// Health AI Assistant endpoint
+
+/**
+ * 2) Health AI Assistant Endpoint (Refactored to use the OpenCareAgent)
+ * This endpoint now acts as a simple proxy to your powerful AWS backend.
+ * It no longer needs to fetch data or build context itself.
+ */
 app.post('/api/health-assistant', async (req, res) => {
-  try {
-    const { userId, query } = req.body;
-    if (!userId || !query) {
-      return res.status(400).json({ success: false, error: 'Missing userId or query.' });
+    try {
+        const { query } = req.body; // userId is no longer needed here, as the frontend will call the agent directly or this proxy just passes the query.
+        if (!query) {
+            return res.status(400).json({ success: false, error: 'Missing query.' });
+        }
+
+        if (!AGENT_API_URL) {
+            return res.status(500).json({ success: false, error: 'Agent API URL is not configured on the server.' });
+        }
+
+        console.log(`Proxying query to OpenCareAgent: "${query}"`);
+
+        // Forward the user's question to the API Gateway endpoint for the OpenCareAgent Lambda
+        const agentResponse = await axios.post(AGENT_API_URL, {
+            question: query
+        });
+
+        // Return the agent's answer directly to the frontend
+        return res.json({ success: true, answer: agentResponse.data.answer });
+
+    } catch (err) {
+        console.error('Health Assistant error:', err.response ? err.response.data : err.message);
+        return res.status(500).json({ success: false, error: 'Health Assistant failed.' });
     }
-    // Fetch user profile, visits, and medications
-    const [profile, visits, medications] = await Promise.all([
-      userService.getUserById(userId),
-      visitService.getUserVisits(userId),
-      medicationService.getUserMedications(userId)
-    ]);
-    if (!profile) {
-      return res.status(404).json({ success: false, error: 'User profile not found.' });
-    }
-    // Format context for LLM
-    const context = `PATIENT PROFILE:\n${JSON.stringify(profile, null, 2)}\n\nVISIT HISTORY:\n${visits.map(v => `- ${v.date}: ${v.summary || v.tldr || ''}`).join('\n')}\n\nCURRENT MEDICATIONS:\n${medications.map(m => `- ${m.name} ${m.dosage || ''} ${m.frequency || ''}` ).join('\n')}`;
-    // Compose prompt
-    const messages = [
-      {
-        role: 'system',
-        content: 'You are a helpful health assistant. Use the following patient data to answer questions, summarize, or provide predictions. If you don\'t know, say so.'
-      },
-      {
-        role: 'user',
-        content: `${context}\n\nUSER QUESTION:\n${query}`
-      }
-    ];
-    // Call OpenAI
-    const chatResponse = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages,
-      temperature: 0.3,
-      max_tokens: 800
-    });
-    const answer = chatResponse.choices[0].message.content.trim();
-    return res.json({ success: true, answer });
-  } catch (err) {
-    console.error('Health Assistant error:', err);
-    return res.status(500).json({ success: false, error: 'Health Assistant failed.' });
-  }
 });
 
-// Export for Vercel
-export default app;
+// =================================================================
+// Server Startup Logic
+// This block tells the server to start listening for requests.
+// =================================================================
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`OpenCare server is running on http://localhost:${PORT}`);
+});
+
+// The 'export default app' is removed as it's not needed for local execution.
+// If you were deploying to a serverless environment like Vercel, you would use that.

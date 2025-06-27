@@ -12,12 +12,16 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.837.0",
+    "@aws-sdk/s3-request-presigner": "^3.837.0",
+    "axios": "^1.10.0",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "ffmpeg-static": "^5.2.0",
     "firebase": "^11.9.1",
     "firebase-admin": "^13.4.0",
     "multer": "^2.0.1",
-    "openai": "^5.1.0"
+    "openai": "^5.1.0",
+    "uuid": "^11.1.0"
   }
 }
