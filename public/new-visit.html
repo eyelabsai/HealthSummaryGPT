@@ -562,6 +562,12 @@
             : new Date().toISOString().split('T')[0];
           dateEl.value = summaryDate;
           document.getElementById('specialtyHelper').textContent = data.specialty ? `AI suggested: ${data.specialty}. You can change this if needed.` : '';
+          
+          // Handle chronic conditions if found
+          if (data.chronicConditions && data.chronicConditions.length > 0) {
+            await updateUserChronicConditions(data.chronicConditions);
+          }
+          
           // Use medication verification instead of direct saving
           displayMedicationVerification(data.medications || []);
         } else {
@@ -826,6 +832,46 @@
         specialtySelect.style.borderColor = "#ccd6f6";
         editBtn.textContent = "✏️ Edit";
         editBtn.className = "btn btn-secondary";
+      }
+    }
+
+    // Function to update user's chronic conditions
+    async function updateUserChronicConditions(newConditions) {
+      try {
+        const user = firebase.auth().currentUser;
+        if (!user) {
+          console.log('User not logged in, skipping chronic condition update');
+          return;
+        }
+
+        // Get current user profile
+        const currentProfile = await firebaseClient.getUserProfile();
+        let currentConditions = [];
+        
+        if (currentProfile && currentProfile.chronicConditions) {
+          currentConditions = currentProfile.chronicConditions.split(',').map(s => s.trim()).filter(Boolean);
+        }
+
+        // Merge new conditions with existing ones, avoiding duplicates
+        const allConditions = [...new Set([...currentConditions, ...newConditions])];
+        
+        // Update user profile with merged conditions
+        await firebaseClient.setUserProfile({
+          ...currentProfile,
+          chronicConditions: allConditions.join(', ')
+        });
+
+        console.log('Updated chronic conditions:', allConditions);
+        
+        // Show notification to user
+        if (newConditions.length > 0) {
+          const conditionText = newConditions.length === 1 ? 'condition' : 'conditions';
+          statusEl.textContent = `Summary complete! Also found and updated ${newConditions.length} new chronic ${conditionText}: ${newConditions.join(', ')}`;
+          statusEl.className = 'status success';
+        }
+      } catch (err) {
+        console.error('Error updating chronic conditions:', err);
+        // Don't fail the entire process if chronic condition update fails
       }
     }
 

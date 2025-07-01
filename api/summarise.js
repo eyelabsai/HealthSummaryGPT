@@ -42,6 +42,9 @@ export default async function handler(req, res) {
       "instructions": "Any special instructions like 'take with food', 'avoid alcohol', 'shake well'",
       "fullInstructions": "Complete patient instructions combining all the above information"
     }
+  ],
+  "chronicConditions": [
+    "List of chronic conditions mentioned or discussed in the transcript. Use standard medical terminology. Examples: 'Hypertension', 'Diabetes', 'Asthma', 'COPD', 'Coronary Artery Disease', 'Chronic Kidney Disease', 'Hyperlipidemia', 'Hypothyroidism', 'Depression', 'Anxiety', 'Arthritis', 'Cancer', 'Obesity'. Only include conditions that are explicitly mentioned as being diagnosed, confirmed, or discussed as ongoing issues."
   ]
 }
 
@@ -53,6 +56,13 @@ For medications, extract ALL available information including:
 - Duration of treatment
 - Special instructions or warnings
 - Combine everything into a clear, patient-friendly fullInstructions field
+
+For chronic conditions:
+- Extract any chronic conditions mentioned in the transcript
+- Use standard medical terminology (e.g., 'Hypertension' not 'high blood pressure')
+- Only include conditions that are explicitly mentioned as diagnosed or ongoing
+- Do not include acute conditions or temporary issues
+- If no chronic conditions are mentioned, return an empty array
 
 IMPORTANT: Date Extraction
 - If the transcript mentions "today", "today's visit", "today's appointment", "during today's visit", etc., return "TODAY" (not the actual date)
@@ -72,6 +82,7 @@ IMPORTANT: Medication Name Correction
 - If you're unsure about a medication name, make your best educated guess based on context and common medications
 
 If no medications are mentioned, return an empty array for the "medications" key.
+If no chronic conditions are mentioned, return an empty array for the "chronicConditions" key.
 
 Transcript:
 ${transcript}`
@@ -100,7 +111,7 @@ ${transcript}`
       });
     }
 
-    let { summary, specialty, date, tldr, medications } = parsed;
+    let { summary, specialty, date, tldr, medications, chronicConditions } = parsed;
 
     // Always use today's date for new visits (since they're being recorded now)
     const today = new Date();
@@ -117,7 +128,8 @@ ${transcript}`
       specialty: specialty || 'Specialty not identified',
       date,
       tldr: tldr || '',
-      medications: medications || []
+      medications: medications || [],
+      chronicConditions: chronicConditions || []
     });
   } catch (err) {
     console.error('Summarisation error:', err);
