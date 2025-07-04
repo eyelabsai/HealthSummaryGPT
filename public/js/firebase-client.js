@@ -62,6 +62,14 @@ const firebaseClient = {
     return null;
   },
 
+  async updateVisit(visitId, updates) {
+    const docRef = db.collection('visits').doc(visitId);
+    return await docRef.update({
+      ...updates,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  },
+
   async deleteVisit(visitId) {
     const docRef = db.collection('visits').doc(visitId);
     await docRef.delete();
