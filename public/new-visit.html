@@ -17,6 +17,14 @@
       --warning-color: #ffc107;
       --error-color: #dc3545;
     }
+
+    [data-theme="dark"] {
+      --background: #1a202c;
+      --card-bg: #2d3748;
+      --text-primary: #f7fafc;
+      --text-secondary: #a0aec0;
+      --border-color: #4a5568;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       background-color: var(--background);
@@ -34,6 +42,28 @@
       text-align: center;
       margin-bottom: 2rem;
       position: relative;
+    }
+    .header-controls {
+      position: absolute;
+      top: 0;
+      right: 0;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    .dark-mode-toggle {
+      background: #6c757d;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.2s ease;
     }
     .header h1 {
       font-size: 2.5rem;
@@ -96,6 +126,41 @@
       background-color: #e9ecef;
       color: var(--text-primary);
     }
+    
+    [data-theme="dark"] .btn-secondary {
+      background-color: #4a5568;
+      color: var(--text-primary);
+    }
+    
+    /* Specialty dropdown styles */
+    #specialty {
+      flex: 1;
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      font-size: 1.05rem;
+      background: var(--card-bg);
+      color: var(--text-primary);
+    }
+    
+    [data-theme="dark"] #specialty {
+      background: var(--card-bg);
+      color: var(--text-primary);
+      border-color: var(--border-color);
+    }
+    
+    [data-theme="dark"] #specialty option {
+      background: var(--card-bg);
+      color: var(--text-primary);
+    }
+    
+    .specialty-helper {
+      color: #667eea;
+    }
+    
+    [data-theme="dark"] .specialty-helper {
+      color: #90cdf4;
+    }
     .btn:disabled {
       opacity: 0.5;
       cursor: not-allowed;
@@ -106,6 +171,8 @@
       padding: 1rem;
       border-radius: 8px;
       border: 1px solid var(--border-color);
+      background: var(--card-bg);
+      color: var(--text-primary);
       font-size: 1rem;
       line-height: 1.6;
       resize: vertical;
@@ -119,21 +186,40 @@
     .status.idle {
       background-color: #f8f9fa;
       border-color: var(--text-secondary);
+      color: var(--text-primary);
+    }
+    
+    [data-theme="dark"] .status.idle {
+      background-color: rgba(255, 255, 255, 0.05);
     }
     .status.recording {
       background-color: #fff0f1;
       border-color: var(--error-color);
       color: var(--error-color);
     }
+    
+    [data-theme="dark"] .status.recording {
+      background-color: rgba(220, 53, 69, 0.1);
+    }
     .status.processing {
       background-color: #fff8e1;
       border-color: var(--warning-color);
       color: #856404;
     }
+    
+    [data-theme="dark"] .status.processing {
+      background-color: rgba(255, 193, 7, 0.1);
+      color: #ffc107;
+    }
     .status.success {
       background-color: #e9f7ef;
       border-color: var(--success-color);
       color: #155724;
+    }
+    
+    [data-theme="dark"] .status.success {
+      background-color: rgba(40, 167, 69, 0.1);
+      color: #28a745;
     }
     .card#summaryCard {
       max-width: 100%;
@@ -156,8 +242,9 @@
       font-size: 1.18rem;
       padding: 1.2rem;
       border-radius: 12px;
-      border: 1.5px solid #ccd6f6;
-      background: #f8f9fa;
+      border: 1.5px solid var(--border-color);
+      background: var(--card-bg);
+      color: var(--text-primary);
       resize: vertical;
       box-sizing: border-box;
     }
@@ -167,12 +254,21 @@
       font-size: 1.13rem;
       padding: 1rem 1.2rem;
     }
+    
+    [data-theme="dark"] .summary-grid select option {
+      background: var(--card-bg);
+      color: var(--text-primary);
+    }
     .recording-info {
       margin-top: 1rem;
       padding: 1rem;
       background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
       border-radius: 8px;
       border-left: 4px solid #007bff;
+    }
+    
+    [data-theme="dark"] .recording-info {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
     }
     .recording-timer {
       font-size: 1.1rem;
@@ -182,17 +278,21 @@
     }
     .recording-size {
       font-size: 0.9rem;
-      color: #6c757d;
+      color: var(--text-secondary);
       margin-bottom: 0.5rem;
     }
     .recording-tip {
       font-size: 0.85rem;
-      color: #495057;
+      color: var(--text-primary);
       font-style: italic;
       background: rgba(255, 255, 255, 0.7);
       padding: 0.5rem;
       border-radius: 4px;
       margin-top: 0.5rem;
+    }
+    
+    [data-theme="dark"] .recording-tip {
+      background: rgba(255, 255, 255, 0.1);
     }
     .medication-verification {
       margin-top: 2rem;
@@ -201,26 +301,46 @@
       border-radius: 8px;
       border-left: 4px solid #ffc107;
     }
+    
+    [data-theme="dark"] .medication-verification {
+      background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 193, 7, 0.1) 100%);
+    }
     .medication-verification h3 {
       margin-top: 0;
       color: #856404;
       font-size: 1.2rem;
     }
+    
+    [data-theme="dark"] .medication-verification h3 {
+      color: #ffc107;
+    }
+    
     .medication-list {
       margin-bottom: 1.5rem;
     }
+    
     .medication-item-verify {
       background: white;
       padding: 1rem;
       border-radius: 6px;
       margin-bottom: 1rem;
       border: 1px solid #dee2e6;
+      color: #212529;
     }
+    
+    [data-theme="dark"] .medication-item-verify {
+      background: var(--card-bg);
+      border-color: var(--border-color);
+      color: var(--text-primary);
+    }
+    
     .medication-name {
       font-weight: 600;
       font-size: 1.1rem;
       margin-bottom: 0.5rem;
+      color: inherit;
     }
+    
     .medication-status {
       display: inline-block;
       padding: 0.25rem 0.5rem;
@@ -229,18 +349,151 @@
       font-weight: 500;
       margin-bottom: 0.5rem;
     }
+    
     .status-new {
       background: #d4edda;
       color: #155724;
     }
+    
+    [data-theme="dark"] .status-new {
+      background: rgba(40, 167, 69, 0.2);
+      color: #4caf50;
+    }
+    
     .status-existing {
       background: #fff3cd;
       color: #856404;
     }
+    
+    [data-theme="dark"] .status-existing {
+      background: rgba(255, 193, 7, 0.2);
+      color: #ffc107;
+    }
+    
     .medication-details {
       font-size: 0.9rem;
       color: #6c757d;
       line-height: 1.4;
+    }
+    
+    [data-theme="dark"] .medication-details {
+      color: var(--text-secondary);
+    }
+    
+    /* Medication input fields */
+    .med-input {
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background: var(--card-bg);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+    }
+    
+    [data-theme="dark"] .med-input {
+      background: var(--card-bg);
+      color: var(--text-primary);
+      border-color: var(--border-color);
+    }
+    
+    [data-theme="dark"] .med-input::placeholder {
+      color: var(--text-secondary);
+    }
+    
+    /* Remove medication button */
+    .remove-med-btn {
+      margin-left: 0.5rem;
+      padding: 0.5rem;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    
+    .remove-med-btn:hover {
+      background: #c82333;
+    }
+    
+    /* Medication summary text */
+    .med-summary-text.med-summary-mixed {
+      color: #856404;
+    }
+    
+    .med-summary-text.med-summary-existing {
+      color: #856404;
+    }
+    
+    .med-summary-text.med-summary-new {
+      color: #155724;
+    }
+    
+    [data-theme="dark"] .med-summary-text.med-summary-mixed {
+      color: #ffc107;
+    }
+    
+    [data-theme="dark"] .med-summary-text.med-summary-existing {
+      color: #ffc107;
+    }
+    
+    [data-theme="dark"] .med-summary-text.med-summary-new {
+      color: #4caf50;
+    }
+    
+    /* Medication conflict styles */
+    .conflict-header {
+      color: #dc3545;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    
+    [data-theme="dark"] .conflict-header {
+      color: #ff6b6b;
+    }
+    
+    .conflict-item {
+      border: 1px solid #ffc107;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background: #fffbe6;
+      color: #212529;
+    }
+    
+    [data-theme="dark"] .conflict-item {
+      background: rgba(255, 193, 7, 0.1);
+      border-color: #ffc107;
+      color: var(--text-primary);
+    }
+    
+    .conflict-btn {
+      margin-right: 0.5rem;
+      padding: 0.5rem 1rem;
+      border: 1px solid #ffc107;
+      background: #fff;
+      color: #856404;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    
+    .conflict-btn:hover {
+      background: #ffc107;
+      color: #212529;
+    }
+    
+    [data-theme="dark"] .conflict-btn {
+      background: var(--card-bg);
+      color: #ffc107;
+      border-color: #ffc107;
+    }
+    
+    [data-theme="dark"] .conflict-btn:hover {
+      background: #ffc107;
+      color: #212529;
     }
     .verification-actions {
       display: flex;
@@ -281,12 +534,18 @@
   <div class="container">
     <div class="header">
       <a href="/" class="back-link">← Back to Dashboard</a>
+      <div class="header-controls">
+        <button id="darkModeToggle" class="dark-mode-toggle">
+          <span id="darkModeIcon">🌙</span>
+          <span id="darkModeText">Dark</span>
+        </button>
+      </div>
       <h1>Record New Visit</h1>
     </div>
 
     <div class="card">
       <h2>Step 1: Record Audio</h2>
-      <p style="margin-bottom: 1rem; color: #6c757d; font-size: 0.9rem;">
+      <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
         💡 For longer visits (1+ minutes), speak clearly and pause between topics. The system can handle recordings up to 50MB.
       </p>
       <div class="controls">
@@ -325,9 +584,9 @@
         <div>
           <label for="specialty">Medical Specialty</label>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <select id="specialty" style="flex: 1; padding: 0.85rem 1rem; border-radius: 8px; border: 1px solid #ccd6f6; font-size: 1.05rem; background: #f8f9fa;"></select>
+            <select id="specialty"></select>
           </div>
-          <small id="specialtyHelper" style="color: #667eea; font-size: 0.95rem; margin-top: 0.3rem; display: block;"></small>
+          <small id="specialtyHelper" class="specialty-helper" style="font-size: 0.95rem; margin-top: 0.3rem; display: block;"></small>
         </div>
         <div>
           <label for="date">Date of Visit</label>
@@ -564,6 +823,12 @@
             : new Date().toISOString().split('T')[0];
           dateEl.value = summaryDate;
           document.getElementById('specialtyHelper').textContent = data.specialty ? `AI suggested: ${data.specialty}. You can change this if needed.` : '';
+          
+          // Handle chronic conditions if found
+          if (data.chronicConditions && data.chronicConditions.length > 0) {
+            await updateUserChronicConditions(data.chronicConditions);
+          }
+          
           // Use medication verification instead of direct saving
           displayMedicationVerification(data.medications || []);
         } else {
@@ -631,18 +896,18 @@
       });
       if (conflicts.length > 0) {
         // Show conflict UI
-        let conflictHtml = '<div style="color:#dc3545;font-weight:600;margin-bottom:1rem;">Medication conflict detected! Please clarify:</div>';
+        let conflictHtml = '<div class="conflict-header">Medication conflict detected! Please clarify:</div>';
         conflictHtml += conflicts.map((c, idx) => `
-          <div style="border:1px solid #ffc107; border-radius:6px; padding:1rem; margin-bottom:1rem; background:#fffbe6;">
+          <div class="conflict-item">
             <div><b>${c.incoming.name}</b> already exists in your current medications.</div>
             <div style="margin-top:0.5rem;">
-              <b>Existing:</b> ${c.existing.dosage || ''} ${c.existing.frequency || ''} ${c.existing.route || ''}
+              <b>Existing:</b> ${c.existing.dosage || 'Not specified'} ${c.existing.frequency || 'Not specified'} ${c.existing.route || 'Not specified'}
               <br/>
-              <b>New:</b> ${c.incoming.dosage || ''} ${c.incoming.frequency || ''} ${c.incoming.route || ''}
+              <b>New:</b> ${c.incoming.dosage || 'Not specified'} ${c.incoming.frequency || 'Not specified'} ${c.incoming.route || 'Not specified'}
             </div>
             <div style="margin-top:0.5rem;">
-              <button type="button" class="conflict-btn" data-action="keep" data-idx="${idx}" style="margin-right:0.5rem;">Keep Existing</button>
-              <button type="button" class="conflict-btn" data-action="replace" data-idx="${idx}" style="margin-right:0.5rem;">Replace with New</button>
+              <button type="button" class="conflict-btn" data-action="keep" data-idx="${idx}">Keep Existing</button>
+              <button type="button" class="conflict-btn" data-action="replace" data-idx="${idx}">Replace with New</button>
               <button type="button" class="conflict-btn" data-action="both" data-idx="${idx}">Keep Both</button>
             </div>
           </div>
@@ -872,26 +1137,26 @@
         
         let summaryText = '';
         if (existingCount > 0 && newCount > 0) {
-          summaryText = `<p style="margin-bottom: 1rem; color: #856404; font-weight: 500;">Found ${newCount} new medication(s) and ${existingCount} already prescribed medication(s).</p>`;
+          summaryText = `<p class="med-summary-text med-summary-mixed" style="margin-bottom: 1rem; font-weight: 500;">Found ${newCount} new medication(s) and ${existingCount} already prescribed medication(s).</p>`;
         } else if (existingCount > 0) {
-          summaryText = `<p style="margin-bottom: 1rem; color: #856404; font-weight: 500;">All ${existingCount} medication(s) are already prescribed.</p>`;
+          summaryText = `<p class="med-summary-text med-summary-existing" style="margin-bottom: 1rem; font-weight: 500;">All ${existingCount} medication(s) are already prescribed.</p>`;
         } else {
-          summaryText = `<p style="margin-bottom: 1rem; color: #155724; font-weight: 500;">Found ${newCount} new medication(s) to add.</p>`;
+          summaryText = `<p class="med-summary-text med-summary-new" style="margin-bottom: 1rem; font-weight: 500;">Found ${newCount} new medication(s) to add.</p>`;
         }
         
         medicationList.innerHTML = summaryText + currentMedications.map((med, idx) => `
           <div class="medication-item-verify" data-idx="${idx}">
             <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-              <input type="text" class="med-input" data-field="name" value="${med.name || ''}" placeholder="Medication name" style="flex:2; min-width: 120px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
-              <input type="text" class="med-input" data-field="dosage" value="${med.dosage || ''}" placeholder="Dosage" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
-              <input type="text" class="med-input" data-field="frequency" value="${med.frequency || ''}" placeholder="Frequency" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
-              <input type="text" class="med-input" data-field="timing" value="${med.timing || ''}" placeholder="Timing" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
-              <input type="text" class="med-input" data-field="route" value="${med.route || ''}" placeholder="Route" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
-              <input type="text" class="med-input" data-field="laterality" value="${med.laterality || ''}" placeholder="Eye/Side" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
-              <input type="text" class="med-input" data-field="duration" value="${med.duration || ''}" placeholder="Duration" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
-              <button type="button" class="remove-med-btn" data-idx="${idx}" style="margin-left:0.5rem; padding: 0.5rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑</button>
+              <input type="text" class="med-input" data-field="name" value="${med.name || ''}" placeholder="Medication name" style="flex:2; min-width: 120px;" />
+              <input type="text" class="med-input" data-field="dosage" value="${med.dosage || ''}" placeholder="Dosage" style="flex:1; min-width: 80px;" />
+              <input type="text" class="med-input" data-field="frequency" value="${med.frequency || ''}" placeholder="Frequency" style="flex:1; min-width: 80px;" />
+              <input type="text" class="med-input" data-field="timing" value="${med.timing || ''}" placeholder="Timing" style="flex:1; min-width: 80px;" />
+              <input type="text" class="med-input" data-field="route" value="${med.route || ''}" placeholder="Route" style="flex:1; min-width: 80px;" />
+              <input type="text" class="med-input" data-field="laterality" value="${med.laterality || ''}" placeholder="Eye/Side" style="flex:1; min-width: 80px;" />
+              <input type="text" class="med-input" data-field="duration" value="${med.duration || ''}" placeholder="Duration" style="flex:1; min-width: 80px;" />
+              <button type="button" class="remove-med-btn" data-idx="${idx}">🗑</button>
             </div>
-            <textarea class="med-input" data-field="fullInstructions" placeholder="Full instructions" style="width:100%; margin-top:0.5rem; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px; min-height: 60px; resize: vertical;">${med.fullInstructions || ''}</textarea>
+            <textarea class="med-input" data-field="fullInstructions" placeholder="Full instructions" style="width:100%; margin-top:0.5rem; min-height: 60px; resize: vertical;">${med.fullInstructions || ''}</textarea>
           </div>
         `).join('') + `
           <button type="button" id="addMedicationBtn" class="btn btn-secondary" style="margin-top:1rem;">+ Add Medication</button>
@@ -939,17 +1204,57 @@
       
       if (specialtySelect.disabled) {
         specialtySelect.disabled = false;
-        specialtySelect.style.background = "#fff";
+        specialtySelect.style.background = "";
         specialtySelect.style.borderColor = "#667eea";
         editBtn.textContent = "✓ Done";
         editBtn.className = "btn btn-primary";
         specialtySelect.focus();
       } else {
         specialtySelect.disabled = true;
-        specialtySelect.style.background = "#f8f9fa";
-        specialtySelect.style.borderColor = "#ccd6f6";
+        specialtySelect.style.background = "";
+        specialtySelect.style.borderColor = "";
         editBtn.textContent = "✏️ Edit";
         editBtn.className = "btn btn-secondary";
+      }
+    }
+
+    // Function to update user's chronic conditions
+    async function updateUserChronicConditions(newConditions) {
+      try {
+        const user = firebase.auth().currentUser;
+        if (!user) {
+          console.log('User not logged in, skipping chronic condition update');
+          return;
+        }
+
+        // Get current user profile
+        const currentProfile = await firebaseClient.getUserProfile();
+        let currentConditions = [];
+        
+        if (currentProfile && currentProfile.chronicConditions) {
+          currentConditions = currentProfile.chronicConditions.split(',').map(s => s.trim()).filter(Boolean);
+        }
+
+        // Merge new conditions with existing ones, avoiding duplicates
+        const allConditions = [...new Set([...currentConditions, ...newConditions])];
+        
+        // Update user profile with merged conditions
+        await firebaseClient.setUserProfile({
+          ...currentProfile,
+          chronicConditions: allConditions.join(', ')
+        });
+
+        console.log('Updated chronic conditions:', allConditions);
+        
+        // Show notification to user
+        if (newConditions.length > 0) {
+          const conditionText = newConditions.length === 1 ? 'condition' : 'conditions';
+          statusEl.textContent = `Summary complete! Also found and updated ${newConditions.length} new chronic ${conditionText}: ${newConditions.join(', ')}`;
+          statusEl.className = 'status success';
+        }
+      } catch (err) {
+        console.error('Error updating chronic conditions:', err);
+        // Don't fail the entire process if chronic condition update fails
       }
     }
 
@@ -1008,6 +1313,39 @@
         console.error('Error saving to Firestore:', err);
       }
     }
+
+    // Dark mode toggle logic
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const darkModeIcon = document.getElementById('darkModeIcon');
+    const darkModeText = document.getElementById('darkModeText');
+    
+    // Check for saved theme preference or default to light mode
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    
+    // Update button appearance based on current theme
+    function updateDarkModeButton(theme) {
+      if (theme === 'dark') {
+        darkModeIcon.textContent = '☀️';
+        darkModeText.textContent = 'Light';
+        darkModeToggle.style.background = '#f59e0b';
+      } else {
+        darkModeIcon.textContent = '🌙';
+        darkModeText.textContent = 'Dark';
+        darkModeToggle.style.background = '#6c757d';
+      }
+    }
+    
+    updateDarkModeButton(currentTheme);
+    
+    darkModeToggle.onclick = function() {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      updateDarkModeButton(newTheme);
+    };
   </script>
 </body>
 </html>
