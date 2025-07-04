@@ -813,9 +813,8 @@
             <div id="welcomeMessage" style="font-size:1.3rem; margin-top:0.5rem; color:#667eea; font-weight:600;"></div>
             <div id="currentDate" style="font-size:1rem; margin-top:0.3rem; color:var(--text-secondary); font-weight:500;"></div>
             <div style="position:absolute; top:2rem; right:2rem; display:flex; gap:1rem; align-items:center;">
-              <button id="darkModeToggle" style="background:#6c757d; color:#fff; border:none; border-radius:6px; padding:0.5rem 1rem; font-size:1rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:0.5rem;">
+              <button id="darkModeToggle" style="background:#6c757d; color:#fff; border:none; border-radius:6px; padding:0.5rem; font-size:1.2rem; cursor:pointer; display:flex; align-items:center;">
                 <span id="darkModeIcon">🌙</span>
-                <span id="darkModeText">Dark</span>
               </button>
               <button id="profileBtn" style="background:#667eea; color:#fff; border:none; border-radius:6px; padding:0.5rem 1.2rem; font-size:1rem; font-weight:600; cursor:pointer;">Profile</button>
               <button id="logoutBtn" style="background:#dc3545; color:#fff; border:none; border-radius:6px; padding:0.5rem 1.2rem; font-size:1rem; font-weight:600; cursor:pointer;">Logout</button>
@@ -1225,27 +1224,24 @@
         window.location.href = '/profile.html';
       };
 
-      // Dark mode toggle logic
-      const darkModeToggle = document.getElementById('darkModeToggle');
-      const darkModeIcon = document.getElementById('darkModeIcon');
-      const darkModeText = document.getElementById('darkModeText');
-      
-      // Check for saved theme preference or default to light mode
-      const currentTheme = localStorage.getItem('theme') || 'light';
-      document.documentElement.setAttribute('data-theme', currentTheme);
-      
-      // Update button appearance based on current theme
-      function updateDarkModeButton(theme) {
-        if (theme === 'dark') {
-          darkModeIcon.textContent = '☀️';
-          darkModeText.textContent = 'Light';
-          darkModeToggle.style.background = '#f59e0b';
-        } else {
-          darkModeIcon.textContent = '🌙';
-          darkModeText.textContent = 'Dark';
-          darkModeToggle.style.background = '#6c757d';
-        }
+          // Dark mode toggle logic
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const darkModeIcon = document.getElementById('darkModeIcon');
+    
+    // Check for saved theme preference or default to light mode
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    
+    // Update button appearance based on current theme
+    function updateDarkModeButton(theme) {
+      if (theme === 'dark') {
+        darkModeIcon.textContent = '☀️';
+        darkModeToggle.style.background = '#f59e0b';
+      } else {
+        darkModeIcon.textContent = '🌙';
+        darkModeToggle.style.background = '#6c757d';
       }
+    }
       
       updateDarkModeButton(currentTheme);
       

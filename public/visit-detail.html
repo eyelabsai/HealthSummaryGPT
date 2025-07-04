@@ -130,9 +130,8 @@
         <div class="header">
             <a href="/" class="back-link">← Back to Dashboard</a>
             <div style="position: absolute; top: 0; right: 0;">
-                <button id="darkModeToggle" style="background:#6c757d; color:#fff; border:none; border-radius:6px; padding:0.5rem 1rem; font-size:1rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:0.5rem; transition:background 0.2s ease;">
+                <button id="darkModeToggle" style="background:#6c757d; color:#fff; border:none; border-radius:6px; padding:0.5rem; font-size:1.2rem; cursor:pointer; display:flex; align-items:center; transition:background 0.2s ease;">
                     <span id="darkModeIcon">🌙</span>
-                    <span id="darkModeText">Dark</span>
                 </button>
             </div>
             <h1>Visit Details</h1>
@@ -224,7 +223,6 @@
         // Dark mode toggle logic
         const darkModeToggle = document.getElementById('darkModeToggle');
         const darkModeIcon = document.getElementById('darkModeIcon');
-        const darkModeText = document.getElementById('darkModeText');
         
         // Check for saved theme preference or default to light mode
         const currentTheme = localStorage.getItem('theme') || 'light';
@@ -234,11 +232,9 @@
         function updateDarkModeButton(theme) {
             if (theme === 'dark') {
                 darkModeIcon.textContent = '☀️';
-                darkModeText.textContent = 'Light';
                 darkModeToggle.style.background = '#f59e0b';
             } else {
                 darkModeIcon.textContent = '🌙';
-                darkModeText.textContent = 'Dark';
                 darkModeToggle.style.background = '#6c757d';
             }
         }
