@@ -1,9 +1,7 @@
-// server.js
+// server.js - Vercel Compatible Version (No OpenAI SDK)
 
 import express from 'express';
 import multer from 'multer';
-
-import OpenAI, { toFile } from 'openai';
 import path from 'path';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
@@ -25,18 +23,58 @@ const upload = multer({
   }
 });
 
-// Initialise OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
 // Serve static files from the "public" folder
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
+// Test endpoint
+app.get('/api/test', (req, res) => {
+  res.json({ success: true, message: 'Server is working!', timestamp: new Date().toISOString() });
+});
 
+// Helper function to create form data for OpenAI API
+function createFormData(audioBuffer, filename, mimeType) {
+  const boundary = '----formdata-' + Math.random().toString(36).substring(2, 15);
+  const chunks = [];
+  
+  // Add model field
+  chunks.push(`--${boundary}\r\n`);
+  chunks.push(`Content-Disposition: form-data; name="model"\r\n\r\n`);
+  chunks.push(`whisper-1\r\n`);
+  
+  // Add response_format field
+  chunks.push(`--${boundary}\r\n`);
+  chunks.push(`Content-Disposition: form-data; name="response_format"\r\n\r\n`);
+  chunks.push(`text\r\n`);
+  
+  // Add temperature field
+  chunks.push(`--${boundary}\r\n`);
+  chunks.push(`Content-Disposition: form-data; name="temperature"\r\n\r\n`);
+  chunks.push(`0.3\r\n`);
+  
+  // Add language field
+  chunks.push(`--${boundary}\r\n`);
+  chunks.push(`Content-Disposition: form-data; name="language"\r\n\r\n`);
+  chunks.push(`en\r\n`);
+  
+  // Add file field
+  chunks.push(`--${boundary}\r\n`);
+  chunks.push(`Content-Disposition: form-data; name="file"; filename="${filename}"\r\n`);
+  chunks.push(`Content-Type: ${mimeType}\r\n\r\n`);
+  
+  // Combine text chunks
+  const textData = Buffer.from(chunks.join(''));
+  
+  // Add file data
+  const endBoundary = Buffer.from(`\r\n--${boundary}--\r\n`);
+  
+  return {
+    data: Buffer.concat([textData, audioBuffer, endBoundary]),
+    contentType: `multipart/form-data; boundary=${boundary}`
+  };
+}
 
-// 1) Transcription endpoint - Updated for serverless (no FFmpeg)
+// 1) Transcription endpoint - Direct OpenAI API call
 app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
   try {
     if (!req.file) {
@@ -45,20 +83,32 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
 
     console.log('Received audio file:', req.file.originalname, 'Size:', req.file.size);
 
-    // Create a File object directly from the buffer - OpenAI Whisper can handle WebM directly
-    const audioFile = await toFile(req.file.buffer, 'recording.webm', { 
-      contentType: req.file.mimetype || 'audio/webm' 
-    });
+    // Create form data for OpenAI API
+    const formData = createFormData(
+      req.file.buffer, 
+      req.file.originalname || 'recording.webm',
+      req.file.mimetype || 'audio/webm'
+    );
 
     console.log('Sending to OpenAI for transcription...');
-    const transcription = await openai.audio.transcriptions.create({
-      file: audioFile,
-      model: 'whisper-1',
-      response_format: 'text',
-      temperature: 0.3,
-      language: 'en'
+    
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': formData.contentType,
+      },
+      body: formData.data
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    }
+
+    const transcription = await response.text();
+    
     console.log(`Transcription completed. Length: ${transcription.length} characters`);
     res.json({ success: true, transcript: transcription });
   } catch (err) {
@@ -75,7 +125,7 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
   }
 });
 
-// 2) Summarisation endpoint
+// 2) Summarisation endpoint - Direct OpenAI API call
 app.post('/api/summarise', async (req, res) => {
   try {
     const { transcript } = req.body;
@@ -83,16 +133,14 @@ app.post('/api/summarise', async (req, res) => {
       return res.status(400).json({ success: false, error: 'No transcript provided.' });
     }
 
-    const chatResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a medical summarization assistant. Please produce a detailed, structured, and comprehensive summary that captures all key details from the transcript. Your summary should not omit any information but should be succinct and easy to understand.'
-        },
-        {
-          role: 'user',
-          content: `Analyze the following medical transcript and return a JSON object with the following keys:
+    const messages = [
+      {
+        role: 'system',
+        content: 'You are a medical summarization assistant. Please produce a detailed, structured, and comprehensive summary that captures all key details from the transcript. Your summary should not omit any information but should be succinct and easy to understand.'
+      },
+      {
+        role: 'user',
+        content: `Analyze the following medical transcript and return a JSON object with the following keys:
 {
   "summary": "A robust, multi-sentence summary covering all the concepts discussed.",
   "tldr": "A very short, one-sentence summary.",
@@ -154,12 +202,30 @@ If no chronic conditions are mentioned, return an empty array for the "chronicCo
 
 Transcript:
 ${transcript}`
-        }
-      ],
-      temperature: 0.4,
-      max_tokens: 800
+      }
+    ];
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: messages,
+        temperature: 0.4,
+        max_tokens: 800
+      })
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    }
+
+    const chatResponse = await response.json();
     const rawContent = chatResponse.choices[0].message.content.trim();
 
     // If JSON is wrapped in code block
@@ -181,9 +247,6 @@ ${transcript}`
 
     let { summary, specialty, date, tldr, medications, chronicConditions } = parsed;
 
-    // Always use today's date for new visits (since they're being recorded now)
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-
     console.log('Setting visit date to today:', date);
 
     return res.json({
@@ -201,24 +264,28 @@ ${transcript}`
   }
 });
 
-// Health AI Assistant endpoint
+// Health AI Assistant endpoint - Direct OpenAI API call
 app.post('/api/health-assistant', async (req, res) => {
   try {
     const { userId, query } = req.body;
     if (!userId || !query) {
       return res.status(400).json({ success: false, error: 'Missing userId or query.' });
     }
+    
     // Fetch user profile, visits, and medications
     const [profile, visits, medications] = await Promise.all([
       userService.getUserById(userId),
       visitService.getUserVisits(userId),
       medicationService.getUserMedications(userId)
     ]);
+    
     if (!profile) {
       return res.status(404).json({ success: false, error: 'User profile not found.' });
     }
+    
     // Format context for LLM
     const context = `PATIENT PROFILE:\n${JSON.stringify(profile, null, 2)}\n\nVISIT HISTORY:\n${visits.map(v => `- ${v.date}: ${v.summary || v.tldr || ''}`).join('\n')}\n\nCURRENT MEDICATIONS:\n${medications.map(m => `- ${m.name} ${m.dosage || ''} ${m.frequency || ''}` ).join('\n')}`;
+    
     // Compose prompt
     const messages = [
       {
@@ -230,14 +297,31 @@ app.post('/api/health-assistant', async (req, res) => {
         content: `${context}\n\nUSER QUESTION:\n${query}`
       }
     ];
-    // Call OpenAI
-    const chatResponse = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages,
-      temperature: 0.3,
-      max_tokens: 800
+    
+    // Call OpenAI API directly
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: messages,
+        temperature: 0.3,
+        max_tokens: 800
+      })
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    }
+
+    const chatResponse = await response.json();
     const answer = chatResponse.choices[0].message.content.trim();
+    
     return res.json({ success: true, answer });
   } catch (err) {
     console.error('Health Assistant error:', err);
