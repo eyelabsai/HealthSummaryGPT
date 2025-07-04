@@ -2,18 +2,13 @@
 
 import express from 'express';
 import multer from 'multer';
-import { createReadStream, renameSync, unlinkSync, existsSync, writeFileSync, readFileSync } from 'fs';
+
 import OpenAI, { toFile } from 'openai';
 import path from 'path';
 import dotenv from 'dotenv';
-import { execSync, execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { userService, visitService, medicationService } from './services/firebase-service.js';
-import { Readable } from 'stream';
-import mime from 'mime-types';
-import { tmpdir } from 'os';
-import ffmpegPath from 'ffmpeg-static';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -39,47 +34,44 @@ const openai = new OpenAI({
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// Helper function to clean up temporary files
-function cleanupFiles(...filePaths) {
-  filePaths.forEach(filePath => {
-    if (existsSync(filePath)) {
-      try {
-        unlinkSync(filePath);
-        console.log(`Cleaned up: ${filePath}`);
-      } catch (err) {
-        console.error(`Failed to clean up ${filePath}:`, err);
-      }
-    }
-  });
-}
 
-// 1) Transcription endpoint
+
+// 1) Transcription endpoint - Updated for serverless (no FFmpeg)
 app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No audio file provided.' });
     }
 
-    const tmpIn  = join(tmpdir(), 'in.webm');
-    const tmpOut = join(tmpdir(), 'out.wav');
-    writeFileSync(tmpIn, req.file.buffer);
+    console.log('Received audio file:', req.file.originalname, 'Size:', req.file.size);
 
-    // -ar 16000  -> 16 kHz, -ac 1 -> mono
-    execFileSync(ffmpegPath, ['-y', '-i', tmpIn, '-ar', '16000', '-ac', '1', tmpOut]);
-
-    const wavBuffer = readFileSync(tmpOut);
-    const wavFile = await toFile(wavBuffer, 'recording.wav', { contentType: 'audio/wav' });
-
-    const { text } = await openai.audio.transcriptions.create({
-      file: wavFile,
-      model: 'whisper-1'
+    // Create a File object directly from the buffer - OpenAI Whisper can handle WebM directly
+    const audioFile = await toFile(req.file.buffer, 'recording.webm', { 
+      contentType: req.file.mimetype || 'audio/webm' 
     });
 
-    unlinkSync(tmpIn); unlinkSync(tmpOut);
-    res.json({ success: true, transcript: text });
+    console.log('Sending to OpenAI for transcription...');
+    const transcription = await openai.audio.transcriptions.create({
+      file: audioFile,
+      model: 'whisper-1',
+      response_format: 'text',
+      temperature: 0.3,
+      language: 'en'
+    });
+
+    console.log(`Transcription completed. Length: ${transcription.length} characters`);
+    res.json({ success: true, transcript: transcription });
   } catch (err) {
     console.error('Transcription error:', err);
-    res.status(500).json({ success: false, error: 'Transcription failed.' });
+    
+    let errorMessage = 'Transcription failed.';
+    if (err.message && err.message.includes('timeout')) {
+      errorMessage = 'Audio processing timed out. Please try a shorter recording.';
+    } else if (err.message && err.message.includes('file size')) {
+      errorMessage = 'Audio file is too large. Please try a shorter recording.';
+    }
+    
+    res.status(500).json({ success: false, error: errorMessage });
   }
 });
 
@@ -252,6 +244,81 @@ app.post('/api/health-assistant', async (req, res) => {
     return res.status(500).json({ success: false, error: 'Health Assistant failed.' });
   }
 });
+
+// Firebase endpoints
+app.post('/api/visits', async (req, res) => {
+  try {
+    const visitData = req.body;
+    const docRef = await visitService.createVisit(visitData);
+    res.json({ success: true, visitId: docRef.id });
+  } catch (err) {
+    console.error('Create visit error:', err);
+    res.status(500).json({ success: false, error: 'Failed to create visit.' });
+  }
+});
+
+app.get('/api/visits/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const visits = await visitService.getUserVisits(userId);
+    res.json({ success: true, visits });
+  } catch (err) {
+    console.error('Get visits error:', err);
+    res.status(500).json({ success: false, error: 'Failed to get visits.' });
+  }
+});
+
+app.delete('/api/visits/:visitId', async (req, res) => {
+  try {
+    const { visitId } = req.params;
+    await visitService.deleteVisit(visitId);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete visit error:', err);
+    res.status(500).json({ success: false, error: 'Failed to delete visit.' });
+  }
+});
+
+app.post('/api/medications', async (req, res) => {
+  try {
+    const medicationData = req.body;
+    const docRef = await medicationService.createMedication(medicationData);
+    res.json({ success: true, medicationId: docRef.id });
+  } catch (err) {
+    console.error('Create medication error:', err);
+    res.status(500).json({ success: false, error: 'Failed to create medication.' });
+  }
+});
+
+app.get('/api/medications/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const medications = await medicationService.getUserMedications(userId);
+    res.json({ success: true, medications });
+  } catch (err) {
+    console.error('Get medications error:', err);
+    res.status(500).json({ success: false, error: 'Failed to get medications.' });
+  }
+});
+
+app.delete('/api/medications/:medicationId', async (req, res) => {
+  try {
+    const { medicationId } = req.params;
+    await medicationService.deleteMedication(medicationId);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete medication error:', err);
+    res.status(500).json({ success: false, error: 'Failed to delete medication.' });
+  }
+});
+
+// Start server for local development
+const PORT = process.env.PORT || 3000;
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+}
 
 // Export for Vercel
 export default app;
