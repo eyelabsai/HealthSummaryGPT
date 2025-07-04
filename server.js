@@ -2,7 +2,7 @@
 
 import express from 'express';
 import multer from 'multer';
-import FormData from 'form-data';
+import { FormData, fetch } from 'undici';
 import path from 'path';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
@@ -45,7 +45,7 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     console.log('Received audio file:', req.file.originalname, 'Size:', req.file.size);
     console.log('File mimetype:', req.file.mimetype);
 
-    // Create proper FormData for OpenAI API using form-data package
+    // Create proper FormData for OpenAI API using undici
     const formData = new FormData();
     
     // Add form fields
@@ -63,11 +63,13 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     
     console.log('Using filename:', filename);
     
-    // Add the audio file buffer directly with proper options
-    formData.append('file', req.file.buffer, {
-      filename: filename,
-      contentType: req.file.mimetype || 'audio/webm'
+    // Create a File-like object for undici FormData
+    const audioFile = new File([req.file.buffer], filename, {
+      type: req.file.mimetype || 'audio/webm'
     });
+    
+    // Add the audio file 
+    formData.append('file', audioFile);
 
     console.log('Sending to OpenAI for transcription...');
     
@@ -75,7 +77,6 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        ...formData.getHeaders()
       },
       body: formData
     });
