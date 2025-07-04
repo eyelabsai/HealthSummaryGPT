@@ -390,6 +390,14 @@
             40% { transform: scale(1); opacity: 1; }
         }
         /* Collapsible medication styles */
+        .collapsible-med .medication-item {
+          background: #f8fafd;
+          border-radius: 10px;
+          margin-bottom: 1.5rem;
+          box-shadow: 0 2px 8px rgba(102,126,234,0.06);
+          padding: 1.2rem 1.2rem 0.7rem 1.2rem;
+          border: 1px solid #e3e8f0;
+        }
         .collapsible-med .med-header {
           display: flex;
           align-items: center;
@@ -404,35 +412,61 @@
         .collapsible-med .med-header:hover {
           background: #f1f5fa;
         }
-        .collapsible-med .chevron {
-          display: inline-block;
-          width: 22px;
-          height: 22px;
-          font-size: 1.3rem;
-          color: #667eea;
-          line-height: 1;
-          transition: none;
-        }
-        .collapsible-med .chevron.open {
-          /* No rotation, just swap character */
-        }
         .collapsible-med .med-name {
           font-weight: 700;
           font-size: 1.08rem;
           color: var(--text-primary);
         }
-        .collapsible-med .med-details-content {
-          margin-top: 0.5rem;
-          margin-bottom: 0.5rem;
-          max-height: 1000px;
-          overflow: hidden;
-          transition: max-height 0.3s cubic-bezier(0.4,0,0.2,1);
-          padding-left: 0;
-          border-left: none;
+        .collapsible-med .med-start-date {
+          font-size: 0.93rem;
+          color: #6c757d;
+          margin-left: 0.5rem;
+          font-weight: 400;
         }
-        .collapsible-med .med-details-content.closed {
-          max-height: 0;
-          padding: 0;
+        .collapsible-med .med-details {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0.5rem 1.5rem;
+          margin-bottom: 0.7rem;
+        }
+        .collapsible-med .med-detail-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.4rem;
+        }
+        .collapsible-med .med-detail-label {
+          font-size: 0.97rem;
+          font-weight: 700;
+          color: #7b8794;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          min-width: 70px;
+        }
+        .collapsible-med .med-detail-value {
+          font-size: 1.01rem;
+          color: var(--text-primary);
+          font-weight: 500;
+        }
+        .collapsible-med .med-instructions {
+          background: #f8f9fa;
+          border-left: 3px solid #667eea;
+          padding: 0.85rem 1rem;
+          border-radius: 0 8px 8px 0;
+          margin-top: 0.7rem;
+          margin-bottom: 0.7rem;
+        }
+        .collapsible-med .med-instructions-label {
+          font-size: 0.97rem;
+          font-weight: 700;
+          color: #7b8794;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 0.25rem;
+        }
+        .collapsible-med .med-instructions-text {
+          font-size: 1.01rem;
+          line-height: 1.5;
+          color: var(--text-primary);
         }
   </style>
 </head>
@@ -629,6 +663,7 @@
               <div class="med-header" onclick="toggleMedDetails(${idx})">
                 <span class="chevron" id="chevron-${idx}">▼</span>
                 <span class="med-name">${med.name}</span>
+                ${med.startDate ? `<span class="med-start-date">Started: ${formatMedDate(med.startDate)}</span>` : ''}
               </div>
               <div class="med-details-content closed" id="med-details-${idx}">
                 ${details.length > 0 ? `<div class="med-details">${detailsHtml}</div>` : ''}
@@ -728,6 +763,14 @@
         } catch (e) {
           chronicList.innerHTML = '<div class="empty-state">Unable to load chronic conditions.</div>';
         }
+      }
+
+      // Helper to format medication start date
+      function formatMedDate(dateStr) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        if (isNaN(d)) return dateStr;
+        return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
       }
     });
   </script>

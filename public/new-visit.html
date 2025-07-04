@@ -381,6 +381,8 @@
     let recordingStartTime, recordingTimer;
     let isRecording = false;
     let currentMedications = []; // Store medications from current visit
+    let isEditingMeds = false;
+    let lastMedicationsSnapshot = [];
 
     // Add recording timer display
     function updateRecordingTimer() {
@@ -683,26 +685,148 @@
     });
 
     editMedsBtn.addEventListener('click', () => {
-      // For now, just hide the verification and show the finish button
-      // In a future enhancement, this could open an editing interface
-      medicationVerification.style.display = 'none';
-      finishVisitBtn.style.display = 'inline-block';
-      
-      statusEl.textContent = 'Visit ready to save. Click "Finish Visit" when ready.';
-      statusEl.className = 'status success';
+      isEditingMeds = true;
+      lastMedicationsSnapshot = currentMedications.map(med => ({ ...med })); // deep copy
+      renderEditMedications();
     });
+
+    function renderEditMedications() {
+      medicationVerification.style.display = 'none';
+      finishVisitBtn.style.display = 'none';
+      // Render editable medication list with a 'Done Editing' button
+      let editHtml = '<h3>Edit Medications</h3>';
+      editHtml += currentMedications.map((med, idx) => `
+        <div class="medication-item-verify" data-idx="${idx}">
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <input type="text" class="med-input" data-field="name" value="${med.name || ''}" placeholder="Medication name" style="flex:2; min-width: 120px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
+            <input type="text" class="med-input" data-field="dosage" value="${med.dosage || ''}" placeholder="Dosage" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
+            <input type="text" class="med-input" data-field="frequency" value="${med.frequency || ''}" placeholder="Frequency" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
+            <input type="text" class="med-input" data-field="timing" value="${med.timing || ''}" placeholder="Timing" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
+            <input type="text" class="med-input" data-field="route" value="${med.route || ''}" placeholder="Route" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
+            <input type="text" class="med-input" data-field="laterality" value="${med.laterality || ''}" placeholder="Eye/Side" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
+            <input type="text" class="med-input" data-field="duration" value="${med.duration || ''}" placeholder="Duration" style="flex:1; min-width: 80px; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;" />
+            <button type="button" class="remove-med-btn" data-idx="${idx}" style="margin-left:0.5rem; padding: 0.5rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑</button>
+          </div>
+          <textarea class="med-input" data-field="fullInstructions" placeholder="Full instructions" style="width:100%; margin-top:0.5rem; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px; min-height: 60px; resize: vertical;">${med.fullInstructions || ''}</textarea>
+        </div>
+      `).join('');
+      editHtml += `<button type="button" id="addMedicationBtn" class="btn btn-secondary" style="margin-top:1rem;">+ Add Medication</button>`;
+      editHtml += `<button type="button" id="doneEditingMedsBtn" class="btn btn-primary" style="margin-top:1rem; margin-left:1rem;">Done Editing</button>`;
+      medicationList.innerHTML = editHtml;
+      medicationList.style.display = 'block';
+      // Add event listeners for input changes
+      medicationList.querySelectorAll('.med-input').forEach(input => {
+        input.addEventListener('input', e => {
+          const idx = +input.closest('.medication-item-verify').dataset.idx;
+          const field = input.dataset.field;
+          currentMedications[idx][field] = input.value;
+        });
+      });
+      // Remove medication
+      medicationList.querySelectorAll('.remove-med-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+          const idx = +btn.dataset.idx;
+          currentMedications.splice(idx, 1);
+          renderEditMedications();
+        });
+      });
+      // Add medication
+      const addBtn = document.getElementById('addMedicationBtn');
+      if (addBtn) {
+        addBtn.addEventListener('click', () => {
+          currentMedications.push({
+            name: '', dosage: '', frequency: '', timing: '', route: '', laterality: '', duration: '', fullInstructions: ''
+          });
+          renderEditMedications();
+        });
+      }
+      // Done Editing
+      const doneBtn = document.getElementById('doneEditingMedsBtn');
+      if (doneBtn) {
+        doneBtn.addEventListener('click', () => {
+          isEditingMeds = false;
+          medicationList.style.display = 'block';
+          medicationVerification.style.display = 'block';
+          finishVisitBtn.style.display = 'none';
+          // Re-run verification with updated meds
+          displayMedicationVerification(currentMedications);
+        });
+      }
+    }
+
+    // --- Robust Medication Matching Utilities ---
+    function normalizeMedName(name) {
+      if (!name) return '';
+      return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '') // remove non-alphanumeric
+        .replace(/(eyedrops|tablets|capsules|solution|ointment|drops|mg|ml)/g, '') // remove common suffixes
+        .trim();
+    }
+    function isSubstringMatch(a, b) {
+      return normalizeMedName(a).includes(normalizeMedName(b)) || normalizeMedName(b).includes(normalizeMedName(a));
+    }
+    function levenshtein(a, b) {
+      const an = a.length;
+      const bn = b.length;
+      if (an === 0) return bn;
+      if (bn === 0) return an;
+      const matrix = [];
+      for (let i = 0; i <= bn; ++i) matrix[i] = [i];
+      for (let j = 0; j <= an; ++j) matrix[0][j] = j;
+      for (let i = 1; i <= bn; ++i) {
+        for (let j = 1; j <= an; ++j) {
+          if (b.charAt(i - 1) === a.charAt(j - 1)) {
+            matrix[i][j] = matrix[i - 1][j - 1];
+          } else {
+            matrix[i][j] = Math.min(
+              matrix[i - 1][j - 1] + 1, // substitution
+              matrix[i][j - 1] + 1,     // insertion
+              matrix[i - 1][j] + 1      // deletion
+            );
+          }
+        }
+      }
+      return matrix[bn][an];
+    }
+    function isFuzzyMatch(a, b, threshold = 2) {
+      return levenshtein(normalizeMedName(a), normalizeMedName(b)) <= threshold;
+    }
+    const medSynonyms = {
+      'pred': ['prednisolone', 'pred forte', 'prednisolone acetate'],
+      'vigamox': ['moxifloxacin'],
+      // Add more as needed
+    };
+    function areSynonyms(a, b) {
+      const normA = normalizeMedName(a);
+      const normB = normalizeMedName(b);
+      for (const key in medSynonyms) {
+        const group = [key, ...medSynonyms[key]].map(normalizeMedName);
+        if (group.includes(normA) && group.includes(normB)) return true;
+      }
+      return false;
+    }
+    function isMedMatch(newMed, existingMed) {
+      return (
+        isSubstringMatch(newMed, existingMed) ||
+        isFuzzyMatch(newMed, existingMed) ||
+        areSynonyms(newMed, existingMed)
+      );
+    }
 
     // Function to verify medications against existing ones
     function verifyMedications(newMedications) {
       const existingMeds = JSON.parse(localStorage.getItem('opencare_medications')) || [];
-      const existingMedNames = new Set(existingMeds.map(m => m.name.toLowerCase()));
-      
-      const verifiedMeds = newMedications.map(med => ({
-        ...med,
-        isExisting: existingMedNames.has(med.name.toLowerCase()),
-        existingMed: existingMeds.find(m => m.name.toLowerCase() === med.name.toLowerCase())
-      }));
-      
+      const verifiedMeds = newMedications.map(med => {
+        const match = existingMeds.find(existingMed =>
+          isMedMatch(med.name, existingMed.name)
+        );
+        return {
+          ...med,
+          isExisting: !!match,
+          existingMed: match || null
+        };
+      });
       return verifiedMeds;
     }
 
@@ -869,6 +993,7 @@
                 }
               });
               medData.userId = userId;
+              medData.startDate = newVisit.date; // Automatically set start date to visit date
               console.log('Saving medication to Firestore:', medData);
               await firebaseClient.createMedication(medData);
             }
