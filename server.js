@@ -2,6 +2,7 @@
 
 import express from 'express';
 import multer from 'multer';
+import FormData from 'form-data';
 import path from 'path';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
@@ -32,47 +33,7 @@ app.get('/api/test', (req, res) => {
   res.json({ success: true, message: 'Server is working!', timestamp: new Date().toISOString() });
 });
 
-// Helper function to create form data for OpenAI API
-function createFormData(audioBuffer, filename, mimeType) {
-  const boundary = '----formdata-' + Math.random().toString(36).substring(2, 15);
-  const chunks = [];
-  
-  // Add model field
-  chunks.push(`--${boundary}\r\n`);
-  chunks.push(`Content-Disposition: form-data; name="model"\r\n\r\n`);
-  chunks.push(`whisper-1\r\n`);
-  
-  // Add response_format field
-  chunks.push(`--${boundary}\r\n`);
-  chunks.push(`Content-Disposition: form-data; name="response_format"\r\n\r\n`);
-  chunks.push(`text\r\n`);
-  
-  // Add temperature field
-  chunks.push(`--${boundary}\r\n`);
-  chunks.push(`Content-Disposition: form-data; name="temperature"\r\n\r\n`);
-  chunks.push(`0.3\r\n`);
-  
-  // Add language field
-  chunks.push(`--${boundary}\r\n`);
-  chunks.push(`Content-Disposition: form-data; name="language"\r\n\r\n`);
-  chunks.push(`en\r\n`);
-  
-  // Add file field
-  chunks.push(`--${boundary}\r\n`);
-  chunks.push(`Content-Disposition: form-data; name="file"; filename="${filename}"\r\n`);
-  chunks.push(`Content-Type: ${mimeType}\r\n\r\n`);
-  
-  // Combine text chunks
-  const textData = Buffer.from(chunks.join(''));
-  
-  // Add file data
-  const endBoundary = Buffer.from(`\r\n--${boundary}--\r\n`);
-  
-  return {
-    data: Buffer.concat([textData, audioBuffer, endBoundary]),
-    contentType: `multipart/form-data; boundary=${boundary}`
-  };
-}
+
 
 // 1) Transcription endpoint - Direct OpenAI API call using FormData
 app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
@@ -84,20 +45,29 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     console.log('Received audio file:', req.file.originalname, 'Size:', req.file.size);
     console.log('File mimetype:', req.file.mimetype);
 
-    // Create proper FormData for OpenAI API
+    // Create proper FormData for OpenAI API using form-data package
     const formData = new FormData();
-    
-    // Create a Blob from the buffer with proper MIME type
-    const audioBlob = new Blob([req.file.buffer], { 
-      type: req.file.mimetype || 'audio/webm' 
-    });
     
     // Add form fields
     formData.append('model', 'whisper-1');
     formData.append('response_format', 'text');
     formData.append('temperature', '0.3');
     formData.append('language', 'en');
-    formData.append('file', audioBlob, req.file.originalname || 'recording.webm');
+    
+    // Fix filename issue - ensure proper extension for OpenAI validation
+    const filename = req.file.originalname && req.file.originalname !== 'blob' 
+      ? req.file.originalname.endsWith('.webm') 
+        ? req.file.originalname 
+        : req.file.originalname + '.webm'
+      : 'recording.webm'; // fallback name with valid extension
+    
+    console.log('Using filename:', filename);
+    
+    // Add the audio file buffer directly with proper options
+    formData.append('file', req.file.buffer, {
+      filename: filename,
+      contentType: req.file.mimetype || 'audio/webm'
+    });
 
     console.log('Sending to OpenAI for transcription...');
     
@@ -105,6 +75,7 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        ...formData.getHeaders()
       },
       body: formData
     });
