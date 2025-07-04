@@ -379,6 +379,170 @@ class MedicationScheduler {
       currentPhase: null
     };
   }
+
+  // UNIVERSAL MEDICATION CLASSIFICATION METHODS
+  // Universal medication classification - detects PATTERNS, not specific words
+  classifyMedicationType(medication) {
+    const { fullInstructions } = medication;
+    
+    // First check if it's a clear tapering regimen
+    if (this.isTaperingRegimen(fullInstructions)) {
+      return {
+        type: 'tapering',
+        hasTimeline: true,
+        showProgress: true,
+        reason: 'Contains specific tapering instructions'
+      };
+    }
+    
+    // Check for ambiguous language PATTERNS (the key insight!)
+    if (this.hasAmbiguousEndCondition(fullInstructions)) {
+      return {
+        type: 'chronic',
+        hasTimeline: false,
+        showProgress: false,
+        reason: 'Contains ambiguous end condition without specific date'
+      };
+    }
+    
+    // Check for specific duration
+    if (this.hasSpecificDuration(fullInstructions)) {
+      return {
+        type: 'short-term',
+        hasTimeline: true,
+        showProgress: true,
+        reason: 'Contains specific duration'
+      };
+    }
+    
+    // Default to chronic if no clear timeline
+    return {
+      type: 'chronic',
+      hasTimeline: false,
+      showProgress: false,
+      reason: 'No clear timeline indicators - assuming chronic'
+    };
+  }
+
+  // UNIVERSAL PATTERN: Detect "until [something happens]" without specific dates
+  hasAmbiguousEndCondition(instructions) {
+    if (!instructions) return false;
+    
+    // The key insight: Look for "until" followed by subjective conditions
+    const ambiguousPatterns = [
+      // Pattern: "until [condition] [improves/resolves/normalizes/etc]"
+      /until\s+(?:we\s+see\s+)?(?:your\s+)?[\w\s]+\s+(?:improve|resolve|normalize|stabilize|clear|heal|get\s+better|go\s+away|disappear|subside)/i,
+      
+      // Pattern: "until [condition] is [state]"
+      /until\s+(?:we\s+see\s+)?(?:your\s+)?[\w\s]+\s+is\s+(?:normal|stable|controlled|clear|healed|better|gone)/i,
+      
+      // Pattern: "until no more [condition]"
+      /until\s+(?:we\s+see\s+)?(?:no\s+more\s+|there\s+are\s+no\s+more\s+)[\w\s]+/i,
+      
+      // Pattern: "until [condition] stops/ends"
+      /until\s+(?:the\s+)?[\w\s]+\s+(?:stops?|ends?|goes\s+away|disappears?)/i,
+      
+      // Pattern: "until you feel [better/normal/etc]"
+      /until\s+you\s+feel\s+(?:better|normal|fine|good|well)/i,
+      
+      // Pattern: "until further notice/evaluation"
+      /until\s+(?:further\s+)?(?:notice|evaluation|assessment|review|follow.?up)/i,
+      
+      // Pattern: "or until [anything]" - the "or" makes it ambiguous
+      /or\s+until\s+[\w\s]+/i
+    ];
+    
+    return ambiguousPatterns.some(pattern => pattern.test(instructions));
+  }
+
+  // Check for specific, measurable durations
+  hasSpecificDuration(instructions) {
+    if (!instructions) return false;
+    
+    const specificDurationPatterns = [
+      // Exact time periods with numbers
+      /(?:for\s+)?(?:exactly\s+)?\d+\s+(?:days?|weeks?|months?)/i,
+      /(?:for\s+)?(?:the\s+next\s+)?\d+\s+(?:days?|weeks?|months?)/i,
+      
+      // Exact time periods with written numbers
+      /(?:for\s+)?(?:exactly\s+)?(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:more\s+)?(?:days?|weeks?|months?)/i,
+      /(?:for\s+)?(?:the\s+next\s+)?(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:days?|weeks?|months?)/i,
+      
+      // "X more days" patterns
+      /\d+\s+more\s+(?:days?|weeks?|months?)/i,
+      /(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+more\s+(?:days?|weeks?|months?)/i,
+      
+      // Course completion
+      /complete\s+(?:the\s+)?(?:full\s+)?course/i,
+      /finish\s+(?:all\s+)?(?:the\s+)?(?:pills?|tablets?|medication)/i,
+      
+      // Specific end dates
+      /until\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)/i,
+      /until\s+\d+\/\d+/i,
+      
+      // Post-procedure with specific timeframes
+      /for\s+\d+\s+(?:days?|weeks?)\s+(?:after|following|post)/i,
+      
+      // Additional specific duration patterns
+      /(?:continue\s+)?(?:for\s+)?(?:another\s+)?\d+\s+(?:days?|weeks?|months?)/i,
+      /(?:continue\s+)?(?:for\s+)?(?:another\s+)?(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:days?|weeks?|months?)/i
+    ];
+    
+    return specificDurationPatterns.some(pattern => pattern.test(instructions));
+  }
+
+  // Check for tapering regimen patterns
+  isTaperingRegimen(instructions) {
+    if (!instructions) return false;
+    
+    const taperingPatterns = [
+      // Pattern 1: "4x daily for 1 week, then 3x daily for 1 week"
+      /(\d+)x?\s*(?:times?\s*)?(?:daily|per\s*day|a\s*day)\s*for\s*(\d+)\s*(?:week|wk)s?.*then/gi,
+      
+      // Pattern 2: "1 drop 4 times daily for 1 week, then 3 times daily for 1 week"
+      /(\d+)\s*drops?\s*(\d+)\s*times?\s*daily\s*for\s*(\d+)\s*(?:week|wk)s?.*then/gi,
+      
+      // Pattern 3: "Apply 4x daily x 1 week, then 3x daily x 1 week"
+      /(?:apply\s*)?(\d+)x\s*daily\s*x\s*(\d+)\s*(?:week|wk)s?.*then/gi,
+      
+      // Pattern 4: "Use 4 times per day for 7 days, then 3 times per day for 7 days"
+      /(\d+)\s*times?\s*per\s*day\s*for\s*(\d+)\s*days?.*then/gi,
+      
+      // Multiple frequency changes
+      /\d+\s*(?:times?\s*)?(?:daily|per\s*day).*then.*\d+\s*(?:times?\s*)?(?:daily|per\s*day)/i,
+      
+      // Explicit tapering language
+      /taper|reduce|decrease|step.?down|wean|gradually/i,
+      
+      // Start high, go low pattern
+      /(?:start|begin)\s+(?:with\s+)?\d+.*(?:reduce|decrease|then\s+\d+)/i
+    ];
+    
+    return taperingPatterns.some(pattern => pattern.test(instructions));
+  }
+
+  // Enhanced medication processing with universal classification
+  processUniversalMedication(medication) {
+    const classification = this.classifyMedicationType(medication);
+    
+    if (classification.type === 'tapering') {
+      return this.parseTaperingRegimen(medication);
+    }
+    
+    if (classification.type === 'short-term') {
+      return this.createSimpleSchedule(medication, new Date());
+    }
+    
+    // For chronic medications, return simple display without timeline
+    return {
+      medicationName: medication.name,
+      type: 'chronic',
+      instruction: medication.fullInstructions,
+      hasSchedule: false,
+      showProgress: false,
+      message: 'Continue as prescribed - no specific end date'
+    };
+  }
 }
 
 // Export for global use

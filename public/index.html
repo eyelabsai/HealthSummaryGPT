@@ -762,6 +762,48 @@
             padding: 0.5rem 0.6rem;
           }
         }
+
+        /* Chronic medication styles */
+        .medication-chronic {
+          background: var(--card-background);
+          border: 1px solid var(--border-color);
+          border-radius: 8px;
+          padding: 1rem;
+          margin-top: 1rem;
+        }
+
+        .chronic-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.5rem;
+        }
+
+        .chronic-title {
+          margin: 0;
+          font-size: 1rem;
+          color: var(--text-primary);
+        }
+
+        .chronic-status {
+          background: #e3f2fd;
+          color: #1976d2;
+          padding: 0.25rem 0.5rem;
+          border-radius: 4px;
+          font-size: 0.8rem;
+          font-weight: 500;
+        }
+
+        [data-theme="dark"] .chronic-status {
+          background: #1a237e;
+          color: #90caf9;
+        }
+
+        .chronic-note {
+          font-size: 0.9rem;
+          color: var(--text-secondary);
+          font-style: italic;
+        }
   </style>
 </head>
 <body>
@@ -964,11 +1006,25 @@
             </div>
           ` : '';
 
-          // Generate timeline for this medication
-          const medicationSchedule = scheduler.parseTaperingRegimen(med);
+          // Generate timeline for this medication using universal classification
+          const classification = scheduler.classifyMedicationType(med);
+          const medicationSchedule = scheduler.processUniversalMedication(med);
           let timelineHtml = '';
           
-          if (medicationSchedule && medicationSchedule.hasSchedule) {
+          if (classification.type === 'chronic') {
+            // Show simple chronic medication display
+            timelineHtml = `
+              <div class="medication-chronic">
+                <div class="chronic-header">
+                  <h4 class="chronic-title">🔄 Ongoing Medication</h4>
+                  <div class="chronic-status">Continue as prescribed</div>
+                </div>
+                <div class="chronic-note">
+                  <strong>Note:</strong> ${classification.reason}
+                </div>
+              </div>
+            `;
+          } else if (medicationSchedule && medicationSchedule.hasSchedule) {
             const status = scheduler.getMedicationStatus(medicationSchedule);
             timelineHtml = `
               <div class="medication-timeline">
@@ -1014,7 +1070,8 @@
               <div class="med-header" onclick="toggleMedDetails(${idx})">
                 <span class="chevron" id="chevron-${idx}">▼</span>
                 <span class="med-name">${med.name}</span>
-                ${medicationSchedule && medicationSchedule.hasSchedule ? '<span style="margin-left: 0.5rem; font-size: 0.8rem; color: #2196f3;">📅 Smart Schedule</span>' : ''}
+                ${classification.type === 'chronic' ? '<span style="margin-left: 0.5rem; font-size: 0.8rem; color: #1976d2;">🔄 Ongoing</span>' : 
+                  medicationSchedule && medicationSchedule.hasSchedule ? '<span style="margin-left: 0.5rem; font-size: 0.8rem; color: #2196f3;">📅 Smart Schedule</span>' : ''}
               </div>
               <div class="med-details-content closed" id="med-details-${idx}">
                 ${details.length > 0 ? `<div class="med-details">${detailsHtml}</div>` : ''}
