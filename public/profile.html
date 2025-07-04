@@ -5,9 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Profile - OpenCare</title>
   <style>
+    :root {
+      --background: linear-gradient(135deg, #f8f9fa 0%, #e0e7ff 100%);
+      --card-bg: #ffffff;
+      --text-primary: #333333;
+      --text-secondary: #6c757d;
+      --border-color: #ccd6f6;
+      --input-bg: #f8f9fa;
+    }
+
+    [data-theme="dark"] {
+      --background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+      --card-bg: #2d3748;
+      --text-primary: #f7fafc;
+      --text-secondary: #a0aec0;
+      --border-color: #4a5568;
+      --input-bg: #4a5568;
+    }
+
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
-      background: linear-gradient(135deg, #f8f9fa 0%, #e0e7ff 100%);
+      background: var(--background);
+      color: var(--text-primary);
       margin: 0;
       padding: 0;
       min-height: 100vh;
@@ -15,7 +34,7 @@
     .container {
       max-width: 600px;
       margin: 3rem auto;
-      background: #fff;
+      background: var(--card-bg);
       border-radius: 20px;
       box-shadow: 0 8px 32px rgba(102,126,234,0.13);
       padding: 2.5rem 2.5rem 2rem 2.5rem;
@@ -31,7 +50,7 @@
       margin: 0;
       font-size: 2rem;
       font-weight: 700;
-      color: #333;
+      color: var(--text-primary);
     }
     .back-btn {
       background: #e9ecef;
@@ -67,7 +86,7 @@
     .profile-info {
       text-align: center;
       margin-bottom: 2rem;
-      color: #6c757d;
+      color: var(--text-secondary);
       font-size: 0.9rem;
     }
     .profile-info div {
@@ -106,16 +125,17 @@
     .field label {
       font-size: 0.98rem;
       font-weight: 500;
-      color: #444;
+      color: var(--text-primary);
       margin-bottom: 0.4rem;
       letter-spacing: 0.1px;
     }
     .field input, .field select {
       padding: 0.85rem 1rem;
       border-radius: 8px;
-      border: 1px solid #ccd6f6;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
       font-size: 1.05rem;
-      background: #f8f9fa;
+      background: var(--input-bg);
       transition: border 0.2s, box-shadow 0.2s;
     }
     .field input:focus, .field select:focus {
@@ -306,10 +326,16 @@
   <div class="container">
     <div class="profile-header">
       <h2>My Profile</h2>
-      <button class="back-btn" onclick="window.location.href='/'">← Dashboard</button>
+      <div style="display: flex; gap: 1rem; align-items: center;">
+        <button id="darkModeToggle" style="background:#6c757d; color:#fff; border:none; border-radius:6px; padding:0.5rem 1rem; font-size:1rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:0.5rem; transition:background 0.2s ease;">
+          <span id="darkModeIcon">🌙</span>
+          <span id="darkModeText">Dark</span>
+        </button>
+        <button class="back-btn" onclick="window.location.href='/'">← Dashboard</button>
+      </div>
     </div>
     <div class="avatar" id="profileAvatar">U</div>
-    <div class="profile-info" id="profileInfo" style="text-align: center; margin-bottom: 2rem; color: #6c757d; font-size: 0.9rem;">
+    <div class="profile-info" id="profileInfo" style="text-align: center; margin-bottom: 2rem; color: var(--text-secondary); font-size: 0.9rem;">
       <div id="ageDisplay" style="margin-bottom: 0.5rem;"></div>
       <div id="dobDisplay"></div>
     </div>
@@ -894,6 +920,39 @@
     addressInput.addEventListener('blur', function() {
       setTimeout(() => { if (addressSuggestionsBox) addressSuggestionsBox.remove(); }, 150);
     });
+
+    // Dark mode toggle logic
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const darkModeIcon = document.getElementById('darkModeIcon');
+    const darkModeText = document.getElementById('darkModeText');
+    
+    // Check for saved theme preference or default to light mode
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    
+    // Update button appearance based on current theme
+    function updateDarkModeButton(theme) {
+      if (theme === 'dark') {
+        darkModeIcon.textContent = '☀️';
+        darkModeText.textContent = 'Light';
+        darkModeToggle.style.background = '#f59e0b';
+      } else {
+        darkModeIcon.textContent = '🌙';
+        darkModeText.textContent = 'Dark';
+        darkModeToggle.style.background = '#6c757d';
+      }
+    }
+    
+    updateDarkModeButton(currentTheme);
+    
+    darkModeToggle.onclick = function() {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      updateDarkModeButton(newTheme);
+    };
   </script>
 </body>
 </html> 
