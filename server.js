@@ -244,15 +244,15 @@ ${transcript}`
   }
 });
 
-// Health AI Assistant endpoint - Direct OpenAI API call
+// Health AI Assistant endpoint - Enhanced with conversation context and temporal intelligence
 app.post('/api/health-assistant', async (req, res) => {
   try {
-    const { userId, query } = req.body;
+    const { userId, query, conversationHistory = [] } = req.body;
     if (!userId || !query) {
       return res.status(400).json({ success: false, error: 'Missing userId or query.' });
     }
     
-    // Fetch user profile, visits, and medications
+    // Fetch user profile, visits, and medications with full details
     const [profile, visits, medications] = await Promise.all([
       userService.getUserById(userId),
       visitService.getUserVisits(userId),
@@ -263,20 +263,114 @@ app.post('/api/health-assistant', async (req, res) => {
       return res.status(404).json({ success: false, error: 'User profile not found.' });
     }
     
-    // Format context for LLM
-    const context = `PATIENT PROFILE:\n${JSON.stringify(profile, null, 2)}\n\nVISIT HISTORY:\n${visits.map(v => `- ${v.date}: ${v.summary || v.tldr || ''}`).join('\n')}\n\nCURRENT MEDICATIONS:\n${medications.map(m => `- ${m.name} ${m.dosage || ''} ${m.frequency || ''}` ).join('\n')}`;
+    // Add current date context for temporal queries
+    const currentDate = new Date();
+    const currentMonth = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+    const lastMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    const lastMonthName = lastMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
     
-    // Compose prompt
+    // Sort visits by date (newest first) and add relative time context
+    const sortedVisits = visits.sort((a, b) => {
+      const dateA = a.startedAt ? new Date(a.startedAt) : new Date(a.date);
+      const dateB = b.startedAt ? new Date(b.startedAt) : new Date(b.date);
+      return dateB - dateA;
+    });
+    
+    // Group visits by month for temporal analysis
+    const visitsByMonth = {};
+    sortedVisits.forEach(visit => {
+      const visitDate = visit.startedAt ? new Date(visit.startedAt) : new Date(visit.date);
+      const monthKey = visitDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+      if (!visitsByMonth[monthKey]) {
+        visitsByMonth[monthKey] = [];
+      }
+      visitsByMonth[monthKey].push(visit);
+    });
+    
+    // Format detailed medication information including smart schedules and start dates
+    const detailedMedications = medications.map(med => {
+      let medInfo = `- ${med.name}`;
+      if (med.dosage) medInfo += ` (${med.dosage})`;
+      if (med.frequency) medInfo += ` - ${med.frequency}`;
+      if (med.timing) medInfo += ` at ${med.timing}`;
+      if (med.route) medInfo += ` via ${med.route}`;
+      if (med.laterality) medInfo += ` (${med.laterality})`;
+      if (med.duration) medInfo += ` for ${med.duration}`;
+      if (med.fullInstructions) medInfo += `\n  Instructions: ${med.fullInstructions}`;
+      if (med.startDate) {
+        const startDate = new Date(med.startDate);
+        const startMonth = startDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+        medInfo += `\n  Started: ${med.startDate} (${startMonth})`;
+      }
+      return medInfo;
+    }).join('\n');
+    
+    // Create temporal visit summary
+    const temporalVisitSummary = Object.entries(visitsByMonth).map(([month, monthVisits]) => {
+      return `${month}: ${monthVisits.length} visit(s)
+${monthVisits.map(v => `  - ${v.date}: ${v.specialty} - ${v.tldr || v.summary || 'No summary'}`).join('\n')}`;
+    }).join('\n\n');
+    
+    // Format context for LLM with enhanced temporal and medication details
+    const context = `CURRENT DATE: ${currentDate.toLocaleDateString()} (${currentMonth})
+LAST MONTH: ${lastMonthName}
+
+PATIENT PROFILE:
+${JSON.stringify(profile, null, 2)}
+
+VISIT HISTORY BY MONTH:
+${temporalVisitSummary}
+
+CURRENT MEDICATIONS (with detailed schedules and start dates):
+${detailedMedications}
+
+CHRONIC CONDITIONS:
+${profile.chronicConditions || 'None listed'}`;
+    
+    // Build conversation messages with history for context
     const messages = [
       {
         role: 'system',
-        content: 'You are a helpful health assistant. Use the following patient data to answer questions, summarize, or provide predictions. If you don\'t know, say so.'
+        content: `You are a helpful health assistant for this specific patient. Use the following patient data to answer questions accurately. 
+
+TEMPORAL QUERY HANDLING:
+- When asked about "last month" or specific months, filter information to that time period only
+- When asked about "the past X months/weeks", calculate the appropriate date range
+- Always specify the time period you're referring to in your response
+- If no data exists for the requested time period, clearly state that
+
+MEDICATION RESPONSES:
+- Refer to specific details including dosages, schedules, start dates, and instructions
+- When discussing duration or "how long", check the detailed medication information
+- Use the smart schedule data when available
+
+CONVERSATION CONTEXT:
+- Use the conversation history to understand follow-up questions and references
+- When someone asks "how long do I take it" after asking about a specific medication, understand the context
+
+Always provide specific, personalized answers based on the patient's actual data and the requested time frame.`
       },
       {
         role: 'user',
         content: `${context}\n\nUSER QUESTION:\n${query}`
       }
     ];
+    
+    // Add conversation history for context (last 6 messages to avoid token limits)
+    if (conversationHistory.length > 0) {
+      const recentHistory = conversationHistory.slice(-6);
+      const historyContext = recentHistory.map(msg => 
+        `${msg.role === 'user' ? 'Patient' : 'Assistant'}: ${msg.content}`
+      ).join('\n');
+      
+      messages[1].content = `RECENT CONVERSATION:
+${historyContext}
+
+${context}
+
+CURRENT QUESTION:
+${query}`;
+    }
     
     // Call OpenAI API directly
     const response = await fetch('https://api.openai.com/v1/chat/completions', {

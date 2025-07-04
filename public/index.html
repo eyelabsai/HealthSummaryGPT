@@ -1319,7 +1319,9 @@
         renderChat();
         
         try {
-          const data = await firebaseClient.askHealthAssistant(question);
+          // Pass conversation history for context
+          const conversationHistory = chatHistory.filter(msg => msg.content !== 'typing');
+          const data = await firebaseClient.askHealthAssistant(question, conversationHistory);
           
           // Remove typing indicator
           chatHistory = chatHistory.filter(msg => msg.content !== 'typing');
@@ -1341,6 +1343,15 @@
       });
     }
     
+    // Add Enter key support for health assistant input
+    if (healthAssistantInput) {
+      healthAssistantInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          healthAssistantForm.dispatchEvent(new Event("submit"));
+        }
+      });
+    }
     function renderChat() {
       if (chatHistory.length === 0) {
         healthAssistantChat.innerHTML = '<div class="chat-placeholder">Ask me anything about your health, medications, or visit history...</div>';
