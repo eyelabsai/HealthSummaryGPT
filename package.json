@@ -18,6 +18,6 @@
     "firebase-admin": "^13.4.0",
     "mime-types": "^3.0.1",
     "multer": "^2.0.1",
-    "openai": "4.20.1"
+    "openai": "4.28.4"
   }
 }

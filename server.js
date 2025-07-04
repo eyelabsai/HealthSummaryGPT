@@ -26,9 +26,10 @@ const upload = multer({
 });
 
 // Initialise OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
 });
+const openai = new OpenAIApi(configuration);
 
 // Serve static files from the "public" folder
 app.use(express.static(path.join(__dirname, 'public')));
