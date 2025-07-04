@@ -74,7 +74,7 @@ function createFormData(audioBuffer, filename, mimeType) {
   };
 }
 
-// 1) Transcription endpoint - Direct OpenAI API call
+// 1) Transcription endpoint - Direct OpenAI API call using FormData
 app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
   try {
     if (!req.file) {
@@ -82,13 +82,22 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     }
 
     console.log('Received audio file:', req.file.originalname, 'Size:', req.file.size);
+    console.log('File mimetype:', req.file.mimetype);
 
-    // Create form data for OpenAI API
-    const formData = createFormData(
-      req.file.buffer, 
-      req.file.originalname || 'recording.webm',
-      req.file.mimetype || 'audio/webm'
-    );
+    // Create proper FormData for OpenAI API
+    const formData = new FormData();
+    
+    // Create a Blob from the buffer with proper MIME type
+    const audioBlob = new Blob([req.file.buffer], { 
+      type: req.file.mimetype || 'audio/webm' 
+    });
+    
+    // Add form fields
+    formData.append('model', 'whisper-1');
+    formData.append('response_format', 'text');
+    formData.append('temperature', '0.3');
+    formData.append('language', 'en');
+    formData.append('file', audioBlob, req.file.originalname || 'recording.webm');
 
     console.log('Sending to OpenAI for transcription...');
     
@@ -96,9 +105,8 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': formData.contentType,
       },
-      body: formData.data
+      body: formData
     });
 
     if (!response.ok) {
