@@ -948,24 +948,39 @@
         const sortOrder = dateFilter.value;
         let filteredVisits = visits.filter(visit => !selectedSpecialty || visit.specialty === selectedSpecialty);
         filteredVisits.sort((a, b) => {
-          const dateA = new Date(a.date);
-          const dateB = new Date(b.date);
+          // Use startedAt timestamp if available, otherwise fall back to date
+          const dateA = a.startedAt ? new Date(a.startedAt) : new Date(a.date);
+          const dateB = b.startedAt ? new Date(b.startedAt) : new Date(b.date);
           return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
         });
         if (filteredVisits.length === 0) {
           visitsList.innerHTML = '<div class="empty-state">No visits match the current filters.</div>';
           return;
         }
-        visitsList.innerHTML = filteredVisits.map(visit => `
-          <div class="visit-item">
-            <div class="visit-content" onclick="location.href='visit-detail.html?id=${visit.id}'">
-              <div class="item-header">${visit.specialty || 'General Visit'}</div>
-              <div class="item-meta">Date: ${visit.date || 'Not specified'}</div>
-              <div class="item-summary">${visit.tldr || ''}</div>
+        visitsList.innerHTML = filteredVisits.map(visit => {
+          // Format the timestamp if available
+          let timeInfo = visit.date || 'Not specified';
+          if (visit.startedAt) {
+            const startTime = new Date(visit.startedAt);
+            const timeString = startTime.toLocaleTimeString([], { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: true 
+            });
+            timeInfo = `${visit.date || 'Not specified'} at ${timeString}`;
+          }
+          
+          return `
+            <div class="visit-item">
+              <div class="visit-content" onclick="location.href='visit-detail.html?id=${visit.id}'">
+                <div class="item-header">${visit.specialty || 'General Visit'}</div>
+                <div class="item-meta">Date: ${timeInfo}</div>
+                <div class="item-summary">${visit.tldr || ''}</div>
+              </div>
+              <button class="delete-btn" onclick="deleteVisit('${visit.id}', event)">×</button>
             </div>
-            <button class="delete-btn" onclick="deleteVisit('${visit.id}', event)">×</button>
-          </div>
-        `).join('');
+          `;
+        }).join('');
       }
 
       async function renderMedications() {

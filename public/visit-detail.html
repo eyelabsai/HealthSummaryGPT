@@ -178,8 +178,19 @@
                         return;
                     }
 
-                    // Format the date
-                    const visitDate = visit.createdAt ? new Date(visit.createdAt.toDate ? visit.createdAt.toDate() : visit.createdAt).toLocaleDateString() : 'Unknown';
+                    // Format the date and time
+                    let visitDate = visit.date || 'Not specified';
+                    let visitTime = '';
+                    
+                    if (visit.startedAt) {
+                        const startTime = new Date(visit.startedAt);
+                        visitTime = startTime.toLocaleTimeString([], { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: true 
+                        });
+                        visitDate = `${visitDate} at ${visitTime}`;
+                    }
 
                     // Populate the details
                     visitDetailsContainer.innerHTML = `

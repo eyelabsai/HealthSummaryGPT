@@ -817,10 +817,21 @@
           tldrEl.value = data.tldr || '';
           populateSpecialtyDropdown(data.specialty || '');
           specialtyEl.value = data.specialty || '';
-          // If date is missing, 'Not specified', or 'TODAY', set to today
-          let summaryDate = data.date && data.date.trim().toLowerCase() !== 'not specified' && data.date.trim().toLowerCase() !== 'today'
-            ? data.date
-            : new Date().toISOString().split('T')[0];
+          // If date is missing, 'Not specified', or 'TODAY', set to today with current time
+          let summaryDate;
+          if (data.date && data.date.trim().toLowerCase() !== 'not specified' && data.date.trim().toLowerCase() !== 'today') {
+            summaryDate = data.date;
+          } else {
+            // Set to today's date with current time
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            const timeStr = now.toLocaleTimeString([], { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: true 
+            });
+            summaryDate = `${dateStr} at ${timeStr}`;
+          }
           dateEl.value = summaryDate;
           document.getElementById('specialtyHelper').textContent = data.specialty ? `AI suggested: ${data.specialty}. You can change this if needed.` : '';
           
@@ -1271,6 +1282,13 @@
       let visitDate = dateEl.value && dateEl.value.trim() !== '' && dateEl.value.trim().toLowerCase() !== 'not specified' && dateEl.value.trim().toLowerCase() !== 'today'
         ? dateEl.value.trim()
         : new Date().toISOString().split('T')[0];
+      
+      // If the date field contains time (e.g., "2025-07-04 at 12:43 PM"), extract just the date part for the date field
+      // but keep the full string for display purposes
+      let displayDate = visitDate;
+      if (visitDate.includes(' at ')) {
+        visitDate = visitDate.split(' at ')[0]; // Extract just the date part for storage
+      }
       const specialtyValue = document.getElementById('specialty').value || 'Uncategorized';
       console.log('DEBUG: specialty to be saved:', specialtyValue);
       const newVisit = {
@@ -1279,7 +1297,8 @@
         summary: summaryEl.value || 'No summary.',
         tldr: tldrEl.value || 'No TLDR.',
         transcript: transcriptEl.value || '',
-        userId
+        userId,
+        startedAt: new Date().toISOString() // Add timestamp when visit started
       };
       console.log('DEBUG: visitDate to be saved:', visitDate);
       console.log('DEBUG: newVisit object to be saved:', newVisit);
