@@ -948,13 +948,13 @@
     });
 
     editMedsBtn.addEventListener('click', () => {
-      // For now, just hide the verification and show the finish button
-      // In a future enhancement, this could open an editing interface
-      medicationVerification.style.display = 'none';
-      finishVisitBtn.style.display = 'inline-block';
+      // The editing interface is already available in the medication verification section
+      // Just update the status to indicate editing mode
+      statusEl.textContent = 'Medication editing mode: Edit medications above, then click "Confirm & Save Visit" when ready.';
+      statusEl.className = 'status processing';
       
-      statusEl.textContent = 'Visit ready to save. Click "Finish Visit" when ready.';
-      statusEl.className = 'status success';
+      // Scroll to the medication list for better UX
+      medicationList.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
     // Function to verify medications against existing ones
