@@ -966,11 +966,8 @@
 
     // Add event listener for finish visit button
     finishVisitBtn.addEventListener('click', () => {
-      // If medications are being verified, don't allow finishing yet
-      if (medicationVerification.style.display !== 'none') {
-        alert('Please review and confirm medications before finishing the visit.');
-        return;
-      }
+      // Hide medication verification when finishing visit
+      medicationVerification.style.display = 'none';
       
       // If visit hasn't been saved yet (no medications), save it now
       if (summaryEl.value && !localStorage.getItem('opencare_visits')) {
@@ -1001,6 +998,9 @@
       } catch (err) {
         statusEl.textContent = 'Error fetching current medications: ' + err.message;
         statusEl.className = 'status error';
+        // Restore save button visibility and hide medication verification
+        medicationVerification.style.display = 'none';
+        finishVisitBtn.style.display = 'inline-block';
         return;
       }
       // Find conflicts
@@ -1067,7 +1067,8 @@
       }
       // No conflicts, proceed as normal
       saveVisitAndMedications(medsToActuallySave, currentMedicationActions);
-      medicationVerification.style.display = 'none';
+      // Keep medication verification visible until user clicks 'Finish Visit'
+      // medicationVerification.style.display = 'none';
       finishVisitBtn.style.display = 'inline-block';
     });
 
@@ -1532,6 +1533,9 @@
           }
           statusEl.textContent = 'Please review medication action warnings.';
           statusEl.className = 'status error';
+          // Restore save button visibility and hide medication verification
+          medicationVerification.style.display = 'none';
+          finishVisitBtn.style.display = 'inline-block';
           return;
         }
         const visitRef = await firebaseClient.createVisit(newVisit);
@@ -1564,6 +1568,8 @@
         }
         statusEl.textContent = 'Summary complete and saved! Visit automatically saved to dashboard.';
         statusEl.className = 'status success';
+        // Keep medication verification visible until user clicks 'Finish Visit'
+        // Don't hide medicationVerification here - let it stay visible
         finishVisitBtn.style.display = 'inline-block';
       } catch (err) {
         statusEl.textContent = `Error saving to Firestore: ${err.message}`;
