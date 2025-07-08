@@ -163,28 +163,15 @@ You MUST detect and extract ALL medication stop/discontinue actions, including:
 - "should stop [medication]"
 - "stop taking [medication]"
 
-PAY SPECIAL ATTENTION TO:
-- "you can stop using [medication]" 
-- "if [condition] has resolved, you can stop [medication]"
-- "now that [condition] has improved, stop [medication]"
-- "since [condition] is better, discontinue [medication]"
-
 When you detect ANY of these patterns, create a medicationAction with:
 - action: "stop"
-- medicationName: the specific medication name (extract the exact medication name mentioned)
+- medicationName: the specific medication name
 - reason: the reason given (e.g., "symptoms resolved", "condition healed", "no longer needed")
 - Do NOT include stopped medications in the "medications" array
-
-IMPORTANT: If you detect a stop/discontinue instruction, you MUST:
-1. Create a medicationAction entry with action: "stop"
-2. NOT create a medication entry for the same drug
-3. Extract the medication name accurately (e.g., "vancomycin" from "vancomycin eye drops")
 
 Examples:
 - "Stop using erythromycin" → medicationAction: {"action": "stop", "medicationName": "erythromycin", "reason": "condition resolved"}
 - "You can discontinue the antibiotic" → medicationAction: {"action": "stop", "medicationName": "antibiotic", "genericReference": "antibiotic", "reason": "treatment completed"}
-- "If your corneal ulcer has resolved, you can stop using vancomycin eye drops" → medicationAction: {"action": "stop", "medicationName": "vancomycin", "reason": "corneal ulcer resolved"}
-- "Your corneal ulcer has resolved, you can stop vancomycin eye drops" → medicationAction: {"action": "stop", "medicationName": "vancomycin", "reason": "corneal ulcer resolved"}
 
 For chronic conditions:
 - Extract any chronic conditions mentioned in the transcript
