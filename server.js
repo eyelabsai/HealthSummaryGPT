@@ -119,6 +119,15 @@ app.post('/api/summarise', async (req, res) => {
       "fullInstructions": "Complete patient instructions combining all the above information"
     }
   ],
+  "medicationActions": [
+    {
+      "action": "start|stop|continue|modify",
+      "medicationName": "Name of the medication",
+      "genericReference": "Optional generic reference like 'ointment', 'drops', 'antibiotic'",
+      "reason": "Reason for the action (e.g., 'symptoms resolved', 'side effects', 'completed course')",
+      "newInstructions": "New instructions if modifying (optional)"
+    }
+  ],
   "chronicConditions": [
     "List of chronic conditions mentioned or discussed in the transcript. Use standard medical terminology. Examples: 'Hypertension', 'Diabetes', 'Asthma', 'COPD', 'Coronary Artery Disease', 'Chronic Kidney Disease', 'Hyperlipidemia', 'Hypothyroidism', 'Depression', 'Anxiety', 'Arthritis', 'Cancer', 'Obesity'. Only include conditions that are explicitly mentioned as being diagnosed, confirmed, or discussed as ongoing issues."
   ]
@@ -132,6 +141,50 @@ For medications, extract ALL available information including:
 - Duration of treatment
 - Special instructions or warnings
 - Combine everything into a clear, patient-friendly fullInstructions field
+
+For medicationActions, detect when the doctor mentions:
+- Starting a new medication: "start", "begin", "prescribe", "add"
+- Stopping a medication: "stop", "discontinue", "no longer", "cease", "end"
+- Continuing a medication: "continue", "keep taking", "maintain"
+- Modifying a medication: "change", "adjust", "modify", "increase", "decrease"
+- Generic references: "the antibiotic", "the drops", "the ointment", "the medication"
+
+CRITICAL: Medication Stop Actions
+You MUST detect and extract ALL medication stop/discontinue actions, including:
+- "stop using [medication]"
+- "discontinue [medication]"
+- "you can stop [medication]"
+- "no longer need [medication]"
+- "cease [medication]"
+- "end [medication]"
+- "stop [medication]"
+- "discontinue the use of [medication]"
+- "can discontinue [medication]"
+- "should stop [medication]"
+- "stop taking [medication]"
+
+PAY SPECIAL ATTENTION TO:
+- "you can stop using [medication]" 
+- "if [condition] has resolved, you can stop [medication]"
+- "now that [condition] has improved, stop [medication]"
+- "since [condition] is better, discontinue [medication]"
+
+When you detect ANY of these patterns, create a medicationAction with:
+- action: "stop"
+- medicationName: the specific medication name (extract the exact medication name mentioned)
+- reason: the reason given (e.g., "symptoms resolved", "condition healed", "no longer needed")
+- Do NOT include stopped medications in the "medications" array
+
+IMPORTANT: If you detect a stop/discontinue instruction, you MUST:
+1. Create a medicationAction entry with action: "stop"
+2. NOT create a medication entry for the same drug
+3. Extract the medication name accurately (e.g., "vancomycin" from "vancomycin eye drops")
+
+Examples:
+- "Stop using erythromycin" → medicationAction: {"action": "stop", "medicationName": "erythromycin", "reason": "condition resolved"}
+- "You can discontinue the antibiotic" → medicationAction: {"action": "stop", "medicationName": "antibiotic", "genericReference": "antibiotic", "reason": "treatment completed"}
+- "If your corneal ulcer has resolved, you can stop using vancomycin eye drops" → medicationAction: {"action": "stop", "medicationName": "vancomycin", "reason": "corneal ulcer resolved"}
+- "Your corneal ulcer has resolved, you can stop vancomycin eye drops" → medicationAction: {"action": "stop", "medicationName": "vancomycin", "reason": "corneal ulcer resolved"}
 
 For chronic conditions:
 - Extract any chronic conditions mentioned in the transcript
@@ -158,6 +211,7 @@ IMPORTANT: Medication Name Correction
 - If you're unsure about a medication name, make your best educated guess based on context and common medications
 
 If no medications are mentioned, return an empty array for the "medications" key.
+If no medication actions are mentioned, return an empty array for the "medicationActions" key.
 If no chronic conditions are mentioned, return an empty array for the "chronicConditions" key.
 
 Transcript:
@@ -187,12 +241,14 @@ ${transcript}`
       });
     }
 
-    let { summary, specialty, date, tldr, medications, chronicConditions } = parsed;
+    let { summary, specialty, date, tldr, medications, medicationActions, chronicConditions } = parsed;
 
     // Always use today's date for new visits (since they're being recorded now)
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
     console.log('Setting visit date to today:', date);
+    console.log('AI detected medication actions:', JSON.stringify(medicationActions, null, 2));
+    console.log('AI detected medications:', JSON.stringify(medications, null, 2));
 
     return res.json({
       success: true,
@@ -201,6 +257,7 @@ ${transcript}`
       date,
       tldr: tldr || '',
       medications: medications || [],
+      medicationActions: medicationActions || [],
       chronicConditions: chronicConditions || []
     });
   } catch (err) {

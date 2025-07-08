@@ -763,6 +763,7 @@
     let recordingStartTime, recordingTimer;
     let isRecording = false;
     let currentMedications = []; // Store medications from current visit
+    let currentMedicationActions = []; // Store medication actions from current visit
 
     // Add recording timer display
     function updateRecordingTimer() {
@@ -951,7 +952,7 @@
           }
           
           // Use medication verification instead of direct saving
-          displayMedicationVerification(data.medications || []);
+          displayMedicationVerification(data.medications || [], data.medicationActions || []);
         } else {
           throw new Error(data.error || 'Summarization failed.');
         }
@@ -1048,13 +1049,13 @@
               conflicts.forEach((c, i) => {
                 if (userChoices[i] === 'replace') {
                   // Discontinue existing, add new
-                  firebaseClient.discontinueMedication(c.existing.id);
+                  firebaseClient.discontinueMedication(c.existing.id, 'Discontinued per doctor instructions');
                   finalMeds.push(c.incoming);
                 } else if (userChoices[i] === 'both') {
                   finalMeds.push(c.incoming);
                 } // else keep existing (do nothing)
               });
-              saveVisitAndMedications(finalMeds);
+              saveVisitAndMedications(finalMeds, currentMedicationActions);
               medicationVerification.style.display = 'none';
               finishVisitBtn.style.display = 'inline-block';
             } else {
@@ -1065,7 +1066,7 @@
         return;
       }
       // No conflicts, proceed as normal
-      saveVisitAndMedications(medsToActuallySave);
+      saveVisitAndMedications(medsToActuallySave, currentMedicationActions);
       medicationVerification.style.display = 'none';
       finishVisitBtn.style.display = 'inline-block';
     });
@@ -1120,15 +1121,151 @@
     populateSpecialtyDropdown();
 
     // Function to display medication verification interface
-    function displayMedicationVerification(medications) {
-      if (!medications || medications.length === 0) {
-        // No medications to verify, proceed directly
+    function displayMedicationVerification(medications, medicationActions) {
+      console.log('displayMedicationVerification called with:');
+      console.log('medications:', medications);
+      console.log('medicationActions:', medicationActions);
+      
+      // Detect stop instructions in medications and convert to medication actions
+      const stopInstructions = [
+        'stop using', 'discontinue', 'stop taking', 'cease', 'end', 'no longer need',
+        'can stop', 'should stop', 'stop', 'discontinue the use of', 'you can stop'
+      ];
+      
+      const detectedStopActions = [];
+      const filteredMedications = [];
+      
+      // First, check if AI already detected stop actions for these medications
+      const aiStopActions = (medicationActions || []).filter(action => action.action === 'stop');
+      console.log('AI detected stop actions:', aiStopActions);
+      
+      medications.forEach(med => {
+        console.log('Processing medication:', med);
+        
+        // Check if AI already detected a stop action for this medication
+        const aiStopAction = aiStopActions.find(action => 
+          action.medicationName && action.medicationName.toLowerCase() === med.name.toLowerCase()
+        );
+        
+        if (aiStopAction) {
+          // AI already detected this as a stop action, use the AI's reason
+          console.log('AI already detected stop action for:', med.name);
+          detectedStopActions.push(aiStopAction);
+        } else {
+          // Check if instructions contain stop keywords
+          const instructions = (med.fullInstructions || '').toLowerCase();
+          const medicationName = (med.name || '').toLowerCase();
+          
+          // Check both instructions and medication name for stop keywords
+          const isStopInstruction = stopInstructions.some(stop => 
+            instructions.includes(stop) || medicationName.includes(stop)
+          );
+          
+          // Additional check: if the medication name itself contains stop words
+          const hasStopInName = medicationName.includes('stop') || 
+                               medicationName.includes('discontinue') ||
+                               medicationName.includes('cease');
+          
+          if (isStopInstruction || hasStopInName) {
+            // Convert to medication action (fallback detection)
+            console.log('Fallback detected stop instruction for:', med.name);
+            detectedStopActions.push({
+              action: 'stop',
+              medicationName: med.name,
+              reason: med.fullInstructions || 'Discontinued per doctor instructions'
+            });
+          } else {
+            // Keep as regular medication
+            filteredMedications.push(med);
+          }
+        }
+      });
+      
+      // Additional fallback: check the transcript directly for stop instructions
+      const transcript = transcriptEl.value || '';
+      const transcriptStopActions = [];
+      
+      // Look for stop patterns in the transcript
+      const stopPatterns = [
+        /(?:you can|can)\s+stop\s+(?:using\s+)?(\w+)/gi,
+        /(?:stop|discontinue)\s+(?:using\s+)?(\w+)/gi,
+        /(?:no longer need|cease)\s+(?:the\s+)?(\w+)/gi
+      ];
+      
+      stopPatterns.forEach(pattern => {
+        let match;
+        while ((match = pattern.exec(transcript)) !== null) {
+          const medicationName = match[1];
+          console.log('Transcript analysis found stop instruction for:', medicationName);
+          
+          // Check if this isn't already detected
+          const alreadyDetected = detectedStopActions.some(action => 
+            action.medicationName.toLowerCase().includes(medicationName.toLowerCase()) ||
+            medicationName.toLowerCase().includes(action.medicationName.toLowerCase())
+          );
+          
+          if (!alreadyDetected) {
+            transcriptStopActions.push({
+              action: 'stop',
+              medicationName: medicationName,
+              reason: 'Discontinued per doctor instructions (detected from transcript)'
+            });
+          }
+        }
+      });
+      
+      console.log('Transcript stop actions:', transcriptStopActions);
+      
+      // Combine AI actions with detected actions, avoiding duplicates
+      const allMedicationActions = [...(medicationActions || []), ...detectedStopActions, ...transcriptStopActions];
+      
+      if (!filteredMedications || filteredMedications.length === 0) {
+        // No medications to verify, but still need to process medication actions
+        console.log('No medications to verify, but processing medication actions:', allMedicationActions);
+        
+        // If there are medication actions, we need to process them and show warnings if needed
+        if (allMedicationActions && allMedicationActions.length > 0) {
+          // Process medication actions to check for warnings
+                     processMedicationActions(allMedicationActions, dateEl.value || new Date().toISOString().split('T')[0])
+             .then(result => {
+               const { actionsToProcess, warnings } = result;
+               console.log('processMedicationActions result:', { actionsToProcess, warnings });
+               
+               if (warnings.length > 0) {
+                 // Show warnings in the medication list area with proceed button
+                 const warningHtml = displayMedicationActionWarnings(warnings, true);
+                 medicationList.innerHTML = warningHtml;
+                 statusEl.textContent = 'Please review medication action warnings.';
+                 statusEl.className = 'status error';
+                 finishVisitBtn.style.display = 'none';
+                 
+                 // Store the data for proceeding later
+                 window.pendingVisitData = {
+                   medications: filteredMedications || [],
+                   medicationActions: allMedicationActions || []
+                 };
+                 return;
+              } else {
+                // No warnings, proceed with saving
         finishVisitBtn.style.display = 'inline-block';
-        saveVisitAndMedications(medications || []);
+                saveVisitAndMedications(filteredMedications || [], allMedicationActions || []);
+              }
+            })
+            .catch(error => {
+              console.error('Error processing medication actions:', error);
+              statusEl.textContent = 'Error processing medication actions.';
+              statusEl.className = 'status error';
+            });
+        } else {
+          // No medication actions either, proceed directly
+          finishVisitBtn.style.display = 'inline-block';
+          saveVisitAndMedications(filteredMedications || [], allMedicationActions || []);
+        }
         return;
       }
       
-      currentMedications = medications.map(med => ({ ...med })); // Deep copy
+      currentMedications = filteredMedications.map(med => ({ ...med })); // Deep copy
+      currentMedicationActions = allMedicationActions.map(action => ({ ...action })); // Deep copy
       
       function renderMedList() {
         const existingCount = currentMedications.filter(med => med.isExisting).length;
@@ -1192,6 +1329,38 @@
       }
       
       renderMedList();
+      
+      // Show medication actions that will be processed
+      if (allMedicationActions.length > 0) {
+        const actionsHtml = allMedicationActions.map(action => {
+          const actionIcon = action.action === 'stop' ? '⏹️' : 
+                           action.action === 'start' ? '▶️' : 
+                           action.action === 'modify' ? '✏️' : '🔄';
+          const actionText = action.action === 'stop' ? 'Discontinue' :
+                           action.action === 'start' ? 'Start' :
+                           action.action === 'modify' ? 'Modify' : 'Continue';
+          
+          return `
+            <div class="medication-action-item" style="background: #e3f2fd; padding: 0.75rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 4px solid #2196f3;">
+              <div style="font-weight: 600; color: #1976d2;">
+                ${actionIcon} ${actionText}: ${action.medicationName}
+              </div>
+              ${action.reason ? `<div style="font-size: 0.9rem; color: #424242; margin-top: 0.25rem;"><strong>Reason:</strong> ${action.reason}</div>` : ''}
+              ${action.newInstructions ? `<div style="font-size: 0.9rem; color: #424242; margin-top: 0.25rem;"><strong>New Instructions:</strong> ${action.newInstructions}</div>` : ''}
+            </div>
+          `;
+        }).join('');
+        
+        const actionsSection = `
+          <div class="medication-actions-section" style="margin-bottom: 1.5rem;">
+            <h4 style="margin-bottom: 0.75rem; color: #1976d2;">Medication Actions to Process:</h4>
+            ${actionsHtml}
+          </div>
+        `;
+        
+        medicationList.innerHTML = actionsSection + medicationList.innerHTML;
+      }
+      
       medicationVerification.style.display = 'block';
       finishVisitBtn.style.display = 'none';
     }
@@ -1343,8 +1512,98 @@
       }
     }
 
-    async function saveVisitAndMedications(medications) {
-      // Get current user
+    // Function to process medication actions (stop, modify, etc.)
+    async function processMedicationActions(medicationActions, visitDate) {
+      if (!medicationActions || medicationActions.length === 0) {
+        return { actionsToProcess: [], warnings: [] };
+      }
+      const actionsToProcess = [];
+      const warnings = [];
+      for (const action of medicationActions) {
+        const { action: actionType, medicationName, genericReference, reason, newInstructions } = action;
+        if (actionType === 'stop' || actionType === 'discontinue') {
+          let targetMedication = null;
+          if (medicationName) {
+            targetMedication = await firebaseClient.getMedicationByName(medicationName);
+          }
+          if (!targetMedication && genericReference) {
+            const allMeds = await firebaseClient.getUserMedications();
+            targetMedication = allMeds.find(med => 
+              med.name.toLowerCase().includes(genericReference.toLowerCase()) ||
+              (med.fullInstructions && med.fullInstructions.toLowerCase().includes(genericReference.toLowerCase()))
+            );
+          }
+          if (targetMedication) {
+            actionsToProcess.push({
+              type: 'stop',
+              medicationId: targetMedication.id,
+              medicationName: targetMedication.name,
+              reason: reason || 'Discontinued per doctor instructions',
+              visitDate: visitDate
+            });
+          } else {
+            warnings.push(`Could not find an active medication to discontinue for: ${medicationName || genericReference}`);
+          }
+        } else if (actionType === 'modify') {
+          const targetMedication = await firebaseClient.getMedicationByName(medicationName);
+          if (targetMedication) {
+            actionsToProcess.push({
+              type: 'modify',
+              medicationId: targetMedication.id,
+              medicationName: targetMedication.name,
+              newInstructions: newInstructions,
+              reason: reason || 'Modified per doctor instructions',
+              visitDate: visitDate
+            });
+          } else {
+            warnings.push(`Could not find an active medication to modify for: ${medicationName}`);
+          }
+        }
+      }
+      return { actionsToProcess, warnings };
+    }
+
+    // UI function to display medication action warnings
+    function displayMedicationActionWarnings(warnings, showProceedButton = false) {
+      if (!warnings || warnings.length === 0) return '';
+      
+      const proceedButtonHtml = showProceedButton ? `
+        <div style="margin-top:1rem;">
+          <button onclick="proceedDespiteWarnings()" style="background:#28a745;color:white;border:none;border-radius:4px;padding:0.5rem 1rem;cursor:pointer;margin-right:0.5rem;">
+            Save Visit (Ignore Missing Medications)
+          </button>
+          <button onclick="cancelVisitSave()" style="background:#6c757d;color:white;border:none;border-radius:4px;padding:0.5rem 1rem;cursor:pointer;">
+            Cancel & Review
+          </button>
+        </div>
+        <div style="margin-top:0.5rem;font-size:0.9em;color:#6c757d;">
+          <strong>Note:</strong> The medication actions will be recorded in the visit details but won't affect your current medication list.
+        </div>
+      ` : '';
+      
+      return `
+        <div class="medication-action-warnings" style="background:#fff3cd;color:#856404;padding:1em;border-radius:6px;margin-bottom:1em;border:1px solid #ffeeba;">
+          <strong>⚠️ Medication Action Warnings:</strong>
+          <ul style="margin:0.5em 0 0 1.2em;">
+            ${warnings.map(w => `<li>${w}</li>`).join('')}
+          </ul>
+          <div style="font-size:0.95em;margin-top:0.5em;">
+            The system tried to ${warnings.length === 1 ? 'perform an action on a medication' : 'perform actions on medications'} that ${warnings.length === 1 ? 'is' : 'are'} not in your current medication list. 
+            This could mean:
+            <ul style="margin:0.5em 0 0 1.2em; font-size:0.9em;">
+              <li>The medication name was transcribed incorrectly</li>
+              <li>You're no longer taking this medication</li>
+              <li>The medication is in your history but not current medications</li>
+            </ul>
+            Please review and clarify, or proceed if this is expected.
+          </div>
+          ${proceedButtonHtml}
+        </div>
+      `;
+    }
+
+    // Updated saveVisitAndMedications to handle medicationActions and show warnings
+    async function saveVisitAndMedications(medications, medicationActions = []) {
       const user = firebase.auth().currentUser;
       if (!user) {
         statusEl.textContent = 'Error: Not logged in.';
@@ -1352,29 +1611,63 @@
         return;
       }
       const userId = user.uid;
-      // Prepare visit data
       let visitDate = dateEl.value && dateEl.value.trim() !== '' && dateEl.value.trim().toLowerCase() !== 'not specified' && dateEl.value.trim().toLowerCase() !== 'today'
         ? dateEl.value.trim()
         : new Date().toISOString().split('T')[0];
       const specialtyValue = document.getElementById('specialty').value || 'Uncategorized';
-      console.log('DEBUG: specialty to be saved:', specialtyValue);
       const newVisit = {
         date: visitDate,
         specialty: specialtyValue,
         summary: summaryEl.value || 'No summary.',
         tldr: tldrEl.value || 'No TLDR.',
         transcript: transcriptEl.value || '',
-        userId
+        userId,
+        medicationActions: medicationActions || []
       };
-      console.log('DEBUG: visitDate to be saved:', visitDate);
-      console.log('DEBUG: newVisit object to be saved:', newVisit);
       try {
+        // Process medication actions first
+        let actionsToProcess = [];
+        let warnings = [];
+        if (medicationActions && medicationActions.length > 0) {
+          const result = await processMedicationActions(medicationActions, visitDate);
+          actionsToProcess = result.actionsToProcess;
+          warnings = result.warnings;
+        }
+        // If there are warnings, show them and do not proceed
+        if (warnings.length > 0) {
+          const warningHtml = displayMedicationActionWarnings(warnings, true);
+          // Insert warning above medication verification list
+          const medList = document.getElementById('medicationList');
+          if (medList) {
+            medList.innerHTML = warningHtml + medList.innerHTML;
+          } else {
+            alert(warnings.join('\n'));
+          }
+          statusEl.textContent = 'Please review medication action warnings.';
+          statusEl.className = 'status error';
+          
+          // Store the data for proceeding later
+          window.pendingVisitData = {
+            medications: medications || [],
+            medicationActions: medicationActions || []
+          };
+          return;
+        }
         const visitRef = await firebaseClient.createVisit(newVisit);
-        // Save medications to Firestore
+        for (const action of actionsToProcess) {
+          if (action.type === 'stop') {
+            await firebaseClient.discontinueMedication(action.medicationId, action.reason);
+            console.log(`Discontinued medication: ${action.medicationName} - Reason: ${action.reason}`);
+          } else if (action.type === 'modify') {
+            await firebaseClient.updateMedication(action.medicationId, {
+              fullInstructions: action.newInstructions
+            });
+            console.log(`Modified medication: ${action.medicationName}`);
+          }
+        }
         if (medications && medications.length > 0) {
           for (const med of medications) {
             if (!med.isExisting) {
-              // Remove 'existingMed' and any undefined fields
               const { existingMed, isExisting, ...medDataRaw } = med;
               const medData = {};
               Object.keys(medDataRaw).forEach(key => {
@@ -1382,8 +1675,8 @@
                   medData[key] = medDataRaw[key];
                 }
               });
+              medData.visitDate = visitDate;
               medData.userId = userId;
-              console.log('Saving medication to Firestore:', medData);
               await firebaseClient.createMedication(medData);
             }
           }
@@ -1397,6 +1690,97 @@
         console.error('Error saving to Firestore:', err);
       }
     }
+
+    // Functions for handling medication action warnings
+    window.proceedDespiteWarnings = function() {
+      if (window.pendingVisitData) {
+        console.log('Proceeding despite warnings with:', window.pendingVisitData);
+        statusEl.textContent = 'Saving visit (ignoring medication actions that could not be processed)...';
+        statusEl.className = 'status';
+        
+        // Clear the warning display
+        const medList = document.getElementById('medicationList');
+        if (medList) {
+          medList.innerHTML = '';
+        }
+        
+        // Save the visit with all medication actions (they'll be stored in visit but not processed)
+        const { medications, medicationActions } = window.pendingVisitData;
+        
+        // Create a new visit object with the medication actions for record keeping
+        const user = firebase.auth().currentUser;
+        const userId = user.uid;
+        let visitDate = dateEl.value && dateEl.value.trim() !== '' && dateEl.value.trim().toLowerCase() !== 'not specified' && dateEl.value.trim().toLowerCase() !== 'today'
+          ? dateEl.value.trim()
+          : new Date().toISOString().split('T')[0];
+        const specialtyValue = document.getElementById('specialty').value || 'Uncategorized';
+        const newVisit = {
+          date: visitDate,
+          specialty: specialtyValue,
+          summary: summaryEl.value || 'No summary.',
+          tldr: tldrEl.value || 'No TLDR.',
+          transcript: transcriptEl.value || '',
+          userId,
+          medicationActions: medicationActions || []
+        };
+        
+        // Save visit without processing medication actions
+        firebaseClient.createVisit(newVisit).then(visitRef => {
+          // Save any new medications
+          if (medications && medications.length > 0) {
+            const savePromises = medications.map(med => {
+              if (!med.isExisting) {
+                const { existingMed, isExisting, ...medDataRaw } = med;
+                const medData = {};
+                Object.keys(medDataRaw).forEach(key => {
+                  if (medDataRaw[key] !== undefined) {
+                    medData[key] = medDataRaw[key];
+                  }
+                });
+                medData.visitDate = visitDate;
+                medData.userId = userId;
+                return firebaseClient.createMedication(medData);
+              }
+              return Promise.resolve();
+            });
+            
+            Promise.all(savePromises).then(() => {
+              statusEl.textContent = 'Visit saved successfully! (Some medication actions were noted but not processed)';
+              statusEl.className = 'status success';
+              finishVisitBtn.style.display = 'inline-block';
+            }).catch(err => {
+              statusEl.textContent = `Error saving medications: ${err.message}`;
+              statusEl.className = 'status error';
+            });
+          } else {
+            statusEl.textContent = 'Visit saved successfully! (Some medication actions were noted but not processed)';
+            statusEl.className = 'status success';
+            finishVisitBtn.style.display = 'inline-block';
+          }
+        }).catch(err => {
+          statusEl.textContent = `Error saving visit: ${err.message}`;
+          statusEl.className = 'status error';
+        });
+        
+        window.pendingVisitData = null;
+      }
+    };
+    
+    window.cancelVisitSave = function() {
+      statusEl.textContent = 'Visit save cancelled. You can edit the transcript and regenerate the summary, or proceed without processing the medication actions.';
+      statusEl.className = 'status';
+      
+      // Clear the warning display
+      const medList = document.getElementById('medicationList');
+      if (medList) {
+        medList.innerHTML = '';
+      }
+      
+      // Show the finish button again so user can proceed if they want
+      finishVisitBtn.style.display = 'inline-block';
+      
+      window.pendingVisitData = null;
+    };
 
     // Dark mode toggle logic
     const darkModeToggle = document.getElementById('darkModeToggle');

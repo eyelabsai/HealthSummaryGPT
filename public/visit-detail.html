@@ -181,6 +181,44 @@
                     // Format the date
                     const visitDate = visit.createdAt ? new Date(visit.createdAt.toDate ? visit.createdAt.toDate() : visit.createdAt).toLocaleDateString() : 'Unknown';
 
+                    // Format medication actions
+                    const formatMedicationActions = (actions) => {
+                        if (!actions || actions.length === 0) {
+                            return '<p style="color: var(--text-secondary); font-style: italic;">No medication changes during this visit.</p>';
+                        }
+                        
+                        return actions.map(action => {
+                            const actionIcon = {
+                                'start': '🆕',
+                                'stop': '🛑',
+                                'discontinue': '🛑',
+                                'continue': '✅',
+                                'modify': '📝'
+                            }[action.action] || '📋';
+                            
+                            const actionText = {
+                                'start': 'Started',
+                                'stop': 'Stopped',
+                                'discontinue': 'Discontinued',
+                                'continue': 'Continued',
+                                'modify': 'Modified'
+                            }[action.action] || 'Action';
+                            
+                            const medicationName = action.medicationName || action.genericReference || 'Unknown medication';
+                            const reason = action.reason ? ` - ${action.reason}` : '';
+                            
+                            return `
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; padding: 0.5rem; background: var(--background); border-radius: 6px; border-left: 3px solid ${action.action === 'stop' || action.action === 'discontinue' ? '#dc3545' : action.action === 'start' ? '#28a745' : '#6c757d'};">
+                                    <span style="font-size: 1.2rem;">${actionIcon}</span>
+                                    <div>
+                                        <strong>${actionText}</strong> ${medicationName}${reason}
+                                        ${action.newInstructions ? `<br><small style="color: var(--text-secondary);">New instructions: ${action.newInstructions}</small>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    };
+
                     // Populate the details
                     visitDetailsContainer.innerHTML = `
                         <div class="visit-detail-grid">
@@ -200,6 +238,9 @@
                                 <br>
                                 <h2>TL;DR</h2>
                                 <p>${visit.tldr || 'No TL;DR available.'}</p>
+                                <br>
+                                <h2>Medication Changes</h2>
+                                ${formatMedicationActions(visit.medicationActions)}
                             </div>
                         </div>
                     `;

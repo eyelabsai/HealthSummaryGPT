@@ -100,20 +100,23 @@ class MedicationScheduler {
     const tomorrowPattern = /(?:start(?:ing)?\s+)?tomorrow|next\s+day|beginning\s+tomorrow/i;
     const todayPattern = /(?:start(?:ing)?\s+)?today|right\s+now|immediately/i;
     
+    // Ensure visitDate is a Date object
+    const visitDateObj = visitDate ? new Date(visitDate) : new Date();
+    
     if (tomorrowPattern.test(fullInstructions)) {
       // If doctor said "starting tomorrow", add 1 day to visit date
-      const tomorrow = new Date(visitDate || new Date());
+      const tomorrow = new Date(visitDateObj);
       tomorrow.setDate(tomorrow.getDate() + 1);
       return tomorrow;
     } else if (todayPattern.test(fullInstructions)) {
       // If doctor said "starting today", use visit date
-      return new Date(visitDate || new Date());
+      return new Date(visitDateObj);
     } else if (startDate) {
       // Use provided start date
       return new Date(startDate);
     } else {
       // Default to visit date
-      return new Date(visitDate || new Date());
+      return new Date(visitDateObj);
     }
   }
 
@@ -530,7 +533,9 @@ class MedicationScheduler {
     }
     
     if (classification.type === 'short-term') {
-      return this.createSimpleSchedule(medication, new Date());
+      // Use visitDate if available, otherwise fall back to current date
+      const startDate = medication.visitDate ? new Date(medication.visitDate) : new Date();
+      return this.createSimpleSchedule(medication, startDate);
     }
     
     // For chronic medications, return simple display without timeline

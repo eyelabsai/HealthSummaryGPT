@@ -102,12 +102,62 @@
             color: var(--text-primary);
             font-size: 0.9rem;
     }
-        .visit-item, .medication-item {
+        .visit-item,         .medication-item {
             padding: 1rem 0;
             border-bottom: 1px solid #e9ecef;
             cursor: pointer;
             transition: background-color 0.2s ease;
             position: relative;
+        }
+        
+        /* Medication History Styles */
+        .inactive-med {
+            background-color: #f8f9fa !important;
+            border-left: 4px solid #6c757d;
+        }
+        
+        .inactive-med:hover {
+            background-color: #e9ecef !important;
+        }
+        
+        .medication-history-info {
+            padding: 1rem;
+            background-color: #ffffff;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+        }
+        
+        .history-timeline {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .history-item {
+            padding: 0.5rem;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        .history-item strong {
+            color: #495057;
+        }
+        
+        /* Medication History Condensed Styles */
+        .medication-history-condensed {
+            padding: 0.75rem;
+            background-color: var(--card-bg);
+            border-radius: 6px;
+            margin-top: 0.5rem;
+        }
+        
+        .history-summary {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            font-family: inherit;
         }
         .visit-item:last-child, .medication-item:last-child {
             border-bottom: none;
@@ -883,6 +933,12 @@
                     </div>
                 </div>
                 <div class="card" style="margin-top: 2rem;">
+                    <h2>Medication History</h2>
+                    <div id="medicationHistoryList">
+                        <div class="empty-state">No medication history found.</div>
+                    </div>
+                </div>
+                <div class="card" style="margin-top: 2rem;">
                   <h2>Chronic Conditions</h2>
                   <div id="chronicConditionsList">
                     <div class="empty-state">No chronic conditions found.</div>
@@ -911,6 +967,7 @@
         await populateSpecialtyFilter();
         await renderVisits();
         await renderMedications();
+        await renderMedicationHistory();
         await renderChronicConditions();
       }
 
@@ -947,25 +1004,42 @@
         const selectedSpecialty = specialtyFilter.value;
         const sortOrder = dateFilter.value;
         let filteredVisits = visits.filter(visit => !selectedSpecialty || visit.specialty === selectedSpecialty);
+        
+        // Sort by createdAt timestamp (most recent first) for proper chronological order
         filteredVisits.sort((a, b) => {
-          const dateA = new Date(a.date);
-          const dateB = new Date(b.date);
-          return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+          const timestampA = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt)) : new Date(a.date);
+          const timestampB = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt)) : new Date(b.date);
+          return sortOrder === 'newest' ? timestampB - timestampA : timestampA - timestampB;
         });
+        
         if (filteredVisits.length === 0) {
           visitsList.innerHTML = '<div class="empty-state">No visits match the current filters.</div>';
           return;
         }
-        visitsList.innerHTML = filteredVisits.map(visit => `
-          <div class="visit-item">
-            <div class="visit-content" onclick="location.href='visit-detail.html?id=${visit.id}'">
-              <div class="item-header">${visit.specialty || 'General Visit'}</div>
-              <div class="item-meta">Date: ${visit.date || 'Not specified'}</div>
-              <div class="item-summary">${visit.tldr || ''}</div>
+        
+        visitsList.innerHTML = filteredVisits.map(visit => {
+          // Format date and time for display
+          let displayDateTime = 'Not specified';
+          if (visit.createdAt) {
+            const timestamp = visit.createdAt.toDate ? visit.createdAt.toDate() : new Date(visit.createdAt);
+            const dateStr = timestamp.toLocaleDateString();
+            const timeStr = timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            displayDateTime = `${dateStr} at ${timeStr}`;
+          } else if (visit.date) {
+            displayDateTime = visit.date;
+          }
+          
+          return `
+            <div class="visit-item">
+              <div class="visit-content" onclick="location.href='visit-detail.html?id=${visit.id}'">
+                <div class="item-header">${visit.specialty || 'General Visit'}</div>
+                <div class="item-meta">Date: ${displayDateTime}</div>
+                <div class="item-summary">${visit.tldr || ''}</div>
+              </div>
+              <button class="delete-btn" onclick="deleteVisit('${visit.id}', event)">×</button>
             </div>
-            <button class="delete-btn" onclick="deleteVisit('${visit.id}', event)">×</button>
-          </div>
-        `).join('');
+          `;
+        }).join('');
       }
 
       async function renderMedications() {
@@ -1084,9 +1158,141 @@
         }).join('');
       }
 
+      async function renderMedicationHistory() {
+        const historyList = document.getElementById('medicationHistoryList');
+        try {
+          // Get all medications (including inactive ones)
+          const allMedications = await firebaseClient.getAllUserMedications();
+          const inactiveMedications = allMedications.filter(med => !med.isActive);
+          
+          // Deduplicate by name and stop date (YYYY-MM-DD)
+          const deduped = {};
+          inactiveMedications.forEach(med => {
+            const stopDate = med.discontinuedDate && med.discontinuedDate.toDate ? med.discontinuedDate.toDate().toISOString().split('T')[0] : 'unknown';
+            const key = `${med.name.toLowerCase()}|${stopDate}`;
+            // Prefer entry with more details (reason, route, frequency, etc.)
+            if (!deduped[key]) {
+              deduped[key] = med;
+            } else {
+              const existing = deduped[key];
+              // Prefer the one with a reason, or more fields filled
+              const score = m => [m.discontinuationReason, m.route, m.frequency, m.dosage].filter(Boolean).length;
+              if (score(med) > score(existing)) {
+                deduped[key] = med;
+              }
+            }
+          });
+          const dedupedList = Object.values(deduped);
+          
+          if (dedupedList.length === 0) {
+            historyList.innerHTML = '<div class="empty-state">No medication history found.</div>';
+            return;
+          }
+          
+          historyList.innerHTML = dedupedList.map((med, idx) => {
+            // Calculate duration used
+            let durationUsed = 'Unknown';
+            let startDate = 'Unknown';
+            let stopDate = 'Unknown';
+            
+            if (med.createdAt && med.discontinuedDate) {
+              const start = med.createdAt.toDate ? med.createdAt.toDate() : new Date(med.createdAt);
+              const stop = med.discontinuedDate.toDate ? med.discontinuedDate.toDate() : new Date(med.discontinuedDate);
+              startDate = start.toLocaleDateString();
+              stopDate = stop.toLocaleDateString();
+              
+              const diffTime = Math.abs(stop - start);
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              durationUsed = `${diffDays} days`;
+            } else if (med.createdAt) {
+              const start = med.createdAt.toDate ? med.createdAt.toDate() : new Date(med.createdAt);
+              startDate = start.toLocaleDateString();
+            }
+            
+            // Get reason for discontinuation
+            let reason = 'Discontinued';
+            if (med.discontinuationReason) {
+              reason = med.discontinuationReason;
+            } else if (med.medicationActions && med.medicationActions.length > 0) {
+              const stopAction = med.medicationActions.find(action => action.action === 'stop');
+              if (stopAction && stopAction.reason) {
+                reason = stopAction.reason;
+              }
+            }
+            
+            const details = [];
+            if (med.dosage) details.push({ label: 'Dosage', value: med.dosage });
+            if (med.frequency) details.push({ label: 'Frequency', value: med.frequency });
+            if (med.timing) details.push({ label: 'Timing', value: med.timing });
+            if (med.route) details.push({ label: 'Route', value: med.route });
+            if (med.laterality) details.push({ label: 'Eye', value: med.laterality });
+            if (med.duration) details.push({ label: 'Duration', value: med.duration });
+            
+            const detailsHtml = details.map(detail => `
+              <div class="med-detail-item">
+                <span class="med-detail-label">${detail.label}:</span>
+                <span class="med-detail-value">${detail.value}</span>
+              </div>
+            `).join('');
+            
+            const instructionsHtml = med.fullInstructions ? `
+              <div class="med-instructions">
+                <div class="med-instructions-label">Complete Instructions</div>
+                <div class="med-instructions-text">${med.fullInstructions}</div>
+              </div>
+            ` : med.dosage ? `
+              <div class="med-instructions">
+                <div class="med-instructions-label">Instructions</div>
+                <div class="med-instructions-text">${med.dosage}</div>
+              </div>
+            ` : '';
+
+            // Condensed history info - only the essentials
+            const historyTimelineHtml = `
+              <div class="medication-history-condensed">
+                <div class="history-summary">
+                  ${startDate} → ${stopDate} (${durationUsed}) • ${reason}
+                </div>
+              </div>
+            `;
+            
+            return `
+              <div class="medication-item collapsible-med" data-idx="${idx}" style="opacity: 0.7;">
+                <div class="med-header" onclick="toggleMedHistoryDetails(${idx})">
+                  <span class="chevron" id="history-chevron-${idx}">▼</span>
+                  <span class="med-name" style="color: #6c757d;">${med.name}</span>
+                  <span style="margin-left: 0.5rem; font-size: 0.8rem; color: #dc3545;">⏹️ Discontinued</span>
+                  <button class="delete-btn" onclick="deleteMedicationHistory('${med.id}', event)" style="margin-left: auto; background: #dc3545; color: white; border: none; border-radius: 4px; padding: 0.25rem 0.5rem; cursor: pointer; font-size: 0.8rem;">Delete</button>
+                </div>
+                <div class="med-details-content closed" id="med-history-details-${idx}">
+                  ${historyTimelineHtml}
+                </div>
+              </div>
+            `;
+          }).join('');
+        } catch (error) {
+          console.error('Error loading medication history:', error);
+          historyList.innerHTML = `<div class="empty-state">Unable to load medication history: ${error.message}</div>`;
+        }
+      }
+
       window.toggleMedDetails = function(idx) {
         const details = document.getElementById('med-details-' + idx);
         const chevron = document.getElementById('chevron-' + idx);
+        if (details.classList.contains('closed')) {
+          details.classList.remove('closed');
+          chevron.classList.add('open');
+          chevron.textContent = '▲';
+        } else {
+          details.classList.add('closed');
+          chevron.classList.remove('open');
+          chevron.textContent = '▼';
+        }
+      }
+
+      window.toggleMedHistoryDetails = function(idx) {
+        const details = document.getElementById('med-history-details-' + idx);
+        const chevron = document.getElementById('history-chevron-' + idx);
         if (details.classList.contains('closed')) {
           details.classList.remove('closed');
           chevron.classList.add('open');
@@ -1126,8 +1332,24 @@
           }
         }
       }
+      
+      async function deleteMedicationHistory(medId, event) {
+        event.stopPropagation();
+        if (confirm('Are you sure you want to delete this medication from history? This is for testing purposes only.')) {
+          try {
+            await firebaseClient.deleteMedicationFromHistory(medId);
+            console.log('Medication deleted from history successfully:', medId);
+            await render();
+          } catch (error) {
+            console.error('Error deleting medication from history:', error);
+            alert('Error deleting medication from history: ' + error.message);
+          }
+        }
+      }
+      
       window.deleteVisit = deleteVisit;
       window.deleteMedication = deleteMedication;
+      window.deleteMedicationHistory = deleteMedicationHistory;
       specialtyFilter.addEventListener('change', renderVisits);
       dateFilter.addEventListener('change', renderVisits);
 

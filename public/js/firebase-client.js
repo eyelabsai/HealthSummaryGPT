@@ -46,12 +46,25 @@ const firebaseClient = {
 
   async getUserVisits() {
     const userId = this.getCurrentUserId();
-    const snapshot = await db.collection('visits')
-      .where('userId', '==', userId)
-      .orderBy('date', 'desc')
-      .get();
     
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    try {
+      // Try to order by createdAt (requires index)
+      const snapshot = await db.collection('visits')
+        .where('userId', '==', userId)
+        .orderBy('createdAt', 'desc')
+        .get();
+      
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      // Fallback to date ordering if createdAt index isn't ready
+      console.log('createdAt index not ready, falling back to date ordering');
+      const snapshot = await db.collection('visits')
+        .where('userId', '==', userId)
+        .orderBy('date', 'desc')
+        .get();
+      
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
   },
 
   async getVisitById(visitId) {
@@ -95,6 +108,16 @@ const firebaseClient = {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   },
 
+  async getAllUserMedications() {
+    const userId = this.getCurrentUserId();
+    const snapshot = await db.collection('medications')
+      .where('userId', '==', userId)
+      .orderBy('createdAt', 'desc')
+      .get();
+    
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  },
+
   async checkMedicationExists(medicationName) {
     const userId = this.getCurrentUserId();
     const snapshot = await db.collection('medications')
@@ -129,16 +152,40 @@ const firebaseClient = {
     });
   },
 
-  async discontinueMedication(medicationId) {
+  async discontinueMedication(medicationId, reason = null) {
+    // Fetch the medication to check its status and details
     const docRef = db.collection('medications').doc(medicationId);
-    return await docRef.update({
+    const medDoc = await docRef.get();
+    if (!medDoc.exists) return;
+    const medData = medDoc.data();
+    if (!medData.isActive) {
+      // Already inactive, update reason/stop date if needed
+      const updateData = {};
+      if (reason) updateData.discontinuationReason = reason;
+      updateData.discontinuedDate = firebase.firestore.FieldValue.serverTimestamp();
+      updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+      await docRef.update(updateData);
+      return;
+    }
+    // Mark as inactive if currently active
+    const updateData = {
       isActive: false,
       discontinuedDate: firebase.firestore.FieldValue.serverTimestamp(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    };
+    if (reason) {
+      updateData.discontinuationReason = reason;
+    }
+    await docRef.update(updateData);
   },
 
   async deleteMedication(medicationId) {
+    const docRef = db.collection('medications').doc(medicationId);
+    await docRef.delete();
+    return { success: true };
+  },
+
+  async deleteMedicationFromHistory(medicationId) {
     const docRef = db.collection('medications').doc(medicationId);
     await docRef.delete();
     return { success: true };

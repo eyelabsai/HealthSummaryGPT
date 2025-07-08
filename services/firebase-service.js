@@ -29,13 +29,26 @@ export const visitService = {
 
   // Get all visits for a user
   async getUserVisits(userId) {
-    const q = query(
-      collection(db, 'visits'),
-      where('userId', '==', userId),
-      orderBy('date', 'desc')
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    try {
+      // Try to order by createdAt (requires index)
+      const q = query(
+        collection(db, 'visits'),
+        where('userId', '==', userId),
+        orderBy('createdAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      // Fallback to date ordering if createdAt index isn't ready
+      console.log('createdAt index not ready, falling back to date ordering');
+      const q = query(
+        collection(db, 'visits'),
+        where('userId', '==', userId),
+        orderBy('date', 'desc')
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
   },
 
   // Get visit by ID
@@ -138,13 +151,19 @@ export const medicationService = {
   },
 
   // Discontinue medication
-  async discontinueMedication(medicationId) {
+  async discontinueMedication(medicationId, reason = null) {
     const docRef = doc(db, 'medications', medicationId);
-    return await updateDoc(docRef, {
+    const updateData = {
       isActive: false,
       discontinuedDate: serverTimestamp(),
       updatedAt: serverTimestamp()
-    });
+    };
+    
+    if (reason) {
+      updateData.discontinuationReason = reason;
+    }
+    
+    return await updateDoc(docRef, updateData);
   },
 
   // Delete medication
