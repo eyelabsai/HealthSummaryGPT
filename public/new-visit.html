@@ -938,13 +938,21 @@
           summaryEl.value = data.summary || '';
           tldrEl.value = data.tldr || '';
           populateSpecialtyDropdown(data.specialty || '');
-          specialtyEl.value = data.specialty || '';
+          // Get the actually selected specialty after smart matching
+          const selectedSpecialty = specialtyEl.value;
           // If date is missing, 'Not specified', or 'TODAY', set to today
           let summaryDate = data.date && data.date.trim().toLowerCase() !== 'not specified' && data.date.trim().toLowerCase() !== 'today'
             ? data.date
             : new Date().toISOString().split('T')[0];
           dateEl.value = summaryDate;
-          document.getElementById('specialtyHelper').textContent = data.specialty ? `AI suggested: ${data.specialty}. You can change this if needed.` : '';
+          
+          // Update helper text to show what was actually selected
+          const helperText = data.specialty ? 
+            (selectedSpecialty === data.specialty ? 
+              `AI suggested: ${data.specialty}. You can change this if needed.` :
+              `AI suggested: ${data.specialty}, selected: ${selectedSpecialty}. You can change this if needed.`) :
+            `Auto-selected: ${selectedSpecialty}. You can change this if needed.`;
+          document.getElementById('specialtyHelper').textContent = helperText;
           
           // Handle chronic conditions if found
           if (data.chronicConditions && data.chronicConditions.length > 0) {
@@ -1111,11 +1119,109 @@
         option.textContent = opt === '' ? 'Select specialty...' : opt;
         specialtyEl.appendChild(option);
       });
-      if (selectedValue && specialtyOptions.includes(selectedValue)) {
-        specialtyEl.value = selectedValue;
-      } else {
-        specialtyEl.value = '';
-      }
+      
+      // Auto-select the best matching specialty
+      const matchedSpecialty = findBestSpecialtyMatch(selectedValue, specialtyOptions);
+      specialtyEl.value = matchedSpecialty;
+    }
+    
+    function findBestSpecialtyMatch(aiSuggestion, availableOptions) {
+      if (!aiSuggestion) return 'Other';
+      
+      const suggestion = aiSuggestion.toLowerCase().trim();
+      
+      // Direct match first
+      const directMatch = availableOptions.find(opt => 
+        opt.toLowerCase() === suggestion
+      );
+      if (directMatch) return directMatch;
+      
+      // Fuzzy matching for common variations
+      const specialtyMappings = {
+        'primary care': 'Primary Care (PCP)',
+        'pcp': 'Primary Care (PCP)',
+        'family medicine': 'Family Medicine',
+        'family practice': 'Family Medicine',
+        'internal medicine': 'Internal Medicine',
+        'cardiology': 'Cardiology',
+        'cardiac': 'Cardiology',
+        'heart': 'Cardiology',
+        'ophthalmology': 'Ophthalmology',
+        'eye': 'Ophthalmology',
+        'vision': 'Ophthalmology',
+        'dermatology': 'Dermatology',
+        'skin': 'Dermatology',
+        'orthopedics': 'Orthopedics',
+        'orthopedic': 'Orthopedics',
+        'bone': 'Orthopedics',
+        'joint': 'Orthopedics',
+        'neurology': 'Neurology',
+        'neurological': 'Neurology',
+        'brain': 'Neurology',
+        'endocrinology': 'Endocrinology',
+        'endocrine': 'Endocrinology',
+        'diabetes': 'Endocrinology',
+        'hormone': 'Endocrinology',
+        'gastroenterology': 'Gastroenterology',
+        'gastro': 'Gastroenterology',
+        'stomach': 'Gastroenterology',
+        'digestive': 'Gastroenterology',
+        'pulmonology': 'Pulmonology',
+        'pulmonary': 'Pulmonology',
+        'lung': 'Pulmonology',
+        'respiratory': 'Pulmonology',
+        'rheumatology': 'Rheumatology',
+        'rheumatic': 'Rheumatology',
+        'arthritis': 'Rheumatology',
+        'urology': 'Urology',
+        'urological': 'Urology',
+        'kidney': 'Urology',
+        'bladder': 'Urology',
+        'gynecology': 'Gynecology',
+        'gyno': 'Gynecology',
+        'women': 'Gynecology',
+        'obstetrics': 'Obstetrics',
+        'pregnancy': 'Obstetrics',
+        'ob': 'Obstetrics',
+        'pediatrics': 'Pediatrics',
+        'pediatric': 'Pediatrics',
+        'children': 'Pediatrics',
+        'child': 'Pediatrics',
+        'psychiatry': 'Psychiatry',
+        'psychiatric': 'Psychiatry',
+        'mental health': 'Psychiatry',
+        'psychology': 'Psychiatry',
+        'oncology': 'Oncology',
+        'cancer': 'Oncology',
+        'tumor': 'Oncology',
+        'emergency': 'Emergency Medicine',
+        'emergency medicine': 'Emergency Medicine',
+        'er': 'Emergency Medicine',
+        'urgent care': 'Urgent Care',
+        'urgent': 'Urgent Care',
+        'physical therapy': 'Physical Therapy',
+        'pt': 'Physical Therapy',
+        'physiotherapy': 'Physical Therapy',
+        'occupational therapy': 'Occupational Therapy',
+        'ot': 'Occupational Therapy',
+        'nutrition': 'Nutrition',
+        'nutritionist': 'Nutrition',
+        'dietitian': 'Nutrition'
+      };
+      
+      // Check mapping
+      const mappedSpecialty = specialtyMappings[suggestion];
+      if (mappedSpecialty) return mappedSpecialty;
+      
+      // Partial match - check if any specialty contains the suggestion or vice versa
+      const partialMatch = availableOptions.find(opt => 
+        opt.toLowerCase().includes(suggestion) || 
+        suggestion.includes(opt.toLowerCase())
+      );
+      if (partialMatch && partialMatch !== '') return partialMatch;
+      
+      // Default to 'Other' if no match found
+      return 'Other';
     }
 
     // Call this on page load
