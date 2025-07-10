@@ -31,3 +31,6 @@ logs
 ehthumbs.db
 Thumbs.db 
 .vercel
+
+# Firebase
+firebase-service-account.json

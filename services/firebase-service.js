@@ -13,7 +13,7 @@ import {
   limit,
   serverTimestamp 
 } from 'firebase/firestore';
-import { db } from '../firebase-config.js';
+import { db, storage } from '../firebase-config.js';
 
 // Visit Services
 export const visitService = {
@@ -236,5 +236,130 @@ export const userService = {
       ...updates,
       updatedAt: serverTimestamp()
     });
+  },
+
+  // Create document
+  async createDocument(documentData) {
+    const { buffer, ...metadata } = documentData;
+    
+    // Upload file to Firebase Storage using Admin SDK
+    const fileName = `${Date.now()}_${documentData.name}`;
+    const bucket = storage.bucket();
+    const file = bucket.file(`documents/${documentData.userId}/${fileName}`);
+    
+    // Upload the file
+    await file.save(buffer, {
+      metadata: {
+        contentType: documentData.type
+      }
+    });
+    
+    // Generate a signed URL for secure access (valid for 1 year)
+    const [downloadURL] = await file.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + 365 * 24 * 60 * 60 * 1000 // 1 year from now
+    });
+    
+    // Store metadata in Firestore
+    const document = {
+      ...metadata,
+      storageRef: file.name,
+      downloadURL: downloadURL,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    
+    return await addDoc(collection(db, 'documents'), document);
+  },
+
+  // Get user documents
+  async getUserDocuments(userId) {
+    try {
+      // Try with createdAt first
+      const q = query(
+        collection(db, 'documents'),
+        where('userId', '==', userId),
+        orderBy('createdAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.log('createdAt index not ready for documents, trying uploadDate ordering');
+      try {
+        // Fallback to uploadDate ordering
+        const q = query(
+          collection(db, 'documents'),
+          where('userId', '==', userId),
+          orderBy('uploadDate', 'desc')
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (fallbackError) {
+        console.log('uploadDate index also not ready, fetching all user documents without ordering');
+        // Final fallback: just filter by userId without ordering
+        const q = query(
+          collection(db, 'documents'),
+          where('userId', '==', userId)
+        );
+        const snapshot = await getDocs(q);
+        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Sort manually by uploadDate or createdAt if available
+        return docs.sort((a, b) => {
+          const dateA = a.createdAt?.toDate?.() || new Date(a.uploadDate) || new Date(0);
+          const dateB = b.createdAt?.toDate?.() || new Date(b.uploadDate) || new Date(0);
+          return dateB - dateA; // Descending order
+        });
+      }
+    }
+  },
+
+  // Get document by ID
+  async getDocumentById(documentId, userId) {
+    const docRef = doc(db, 'documents', documentId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      const document = { id: docSnap.id, ...docSnap.data() };
+      
+      // Verify the document belongs to the user
+      if (document.userId !== userId) {
+        throw new Error('Unauthorized access to document');
+      }
+      
+      return document;
+    }
+    
+    return null;
+  },
+
+  // Delete document
+  async deleteDocument(documentId, userId) {
+    const docRef = doc(db, 'documents', documentId);
+    
+    // First verify the document belongs to the user
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const document = docSnap.data();
+      if (document.userId !== userId) {
+        throw new Error('Unauthorized access to document');
+      }
+      
+      // Delete file from Firebase Storage using Admin SDK
+      if (document.storageRef) {
+        try {
+          const bucket = storage.bucket();
+          const file = bucket.file(document.storageRef);
+          await file.delete();
+        } catch (error) {
+          console.error('Error deleting file from storage:', error);
+          // Continue with Firestore deletion even if storage deletion fails
+        }
+      }
+    } else {
+      throw new Error('Document not found');
+    }
+    
+    return await deleteDoc(docRef);
   }
 };

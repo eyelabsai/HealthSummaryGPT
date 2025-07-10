@@ -24,6 +24,15 @@ const upload = multer({
   }
 });
 
+// Configure multer for document uploads
+const documentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit for documents
+    files: 10 // Allow multiple files
+  }
+});
+
 // Serve static files from the "public" folder
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
@@ -447,80 +456,127 @@ ${query}`;
   }
 });
 
-// Firebase endpoints
-app.post('/api/visits', async (req, res) => {
+// Document upload endpoint
+app.post('/api/upload-document', documentUpload.single('document'), async (req, res) => {
   try {
-    const visitData = req.body;
-    const docRef = await visitService.createVisit(visitData);
-    res.json({ success: true, visitId: docRef.id });
+    const { userId } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'Missing userId.' });
+    }
+    
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No file uploaded.' });
+    }
+    
+    const file = req.file;
+    
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid file type. Only PDF, PNG, JPG, and JPEG files are allowed.' 
+      });
+    }
+    
+    // Create document data
+    const documentData = {
+      userId,
+      name: file.originalname,
+      type: file.mimetype,
+      size: file.size,
+      uploadDate: new Date().toISOString(),
+      buffer: file.buffer // Pass the buffer directly instead of base64
+    };
+    
+    // Save to Firestore (we'll add this to firebase-service.js)
+    const docRef = await userService.createDocument(documentData);
+    
+    res.json({
+      success: true,
+      documentId: docRef.id,
+      message: 'Document uploaded successfully'
+    });
+    
   } catch (err) {
-    console.error('Create visit error:', err);
-    res.status(500).json({ success: false, error: 'Failed to create visit.' });
+    console.error('Document upload error:', err);
+    res.status(500).json({ success: false, error: 'Document upload failed.' });
   }
 });
 
-app.get('/api/visits/:userId', async (req, res) => {
+// Get user documents endpoint
+app.get('/api/documents', async (req, res) => {
   try {
-    const { userId } = req.params;
-    const visits = await visitService.getUserVisits(userId);
-    res.json({ success: true, visits });
+    const { userId } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'Missing userId.' });
+    }
+    
+    const documents = await userService.getUserDocuments(userId);
+    
+    // Remove binary data from response for list view
+    const documentsWithoutData = documents.map(doc => ({
+      id: doc.id,
+      name: doc.name,
+      type: doc.type,
+      size: doc.size,
+      uploadDate: doc.uploadDate
+    }));
+    
+    res.json(documentsWithoutData);
+    
   } catch (err) {
-    console.error('Get visits error:', err);
-    res.status(500).json({ success: false, error: 'Failed to get visits.' });
+    console.error('Get documents error:', err);
+    res.status(500).json({ success: false, error: 'Failed to retrieve documents.' });
   }
 });
 
-app.delete('/api/visits/:visitId', async (req, res) => {
+// Download document endpoint
+app.get('/api/download-document/:documentId', async (req, res) => {
   try {
-    const { visitId } = req.params;
-    await visitService.deleteVisit(visitId);
-    res.json({ success: true });
+    const { documentId } = req.params;
+    const { userId } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'Missing userId.' });
+    }
+    
+    const document = await userService.getDocumentById(documentId, userId);
+    
+    if (!document) {
+      return res.status(404).json({ success: false, error: 'Document not found.' });
+    }
+    
+    // Redirect to Firebase Storage download URL
+    res.redirect(document.downloadURL);
+    
   } catch (err) {
-    console.error('Delete visit error:', err);
-    res.status(500).json({ success: false, error: 'Failed to delete visit.' });
+    console.error('Download document error:', err);
+    res.status(500).json({ success: false, error: 'Failed to download document.' });
   }
 });
 
-app.post('/api/medications', async (req, res) => {
+// Delete document endpoint
+app.delete('/api/delete-document/:documentId', async (req, res) => {
   try {
-    const medicationData = req.body;
-    const docRef = await medicationService.createMedication(medicationData);
-    res.json({ success: true, medicationId: docRef.id });
+    const { documentId } = req.params;
+    const { userId } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'Missing userId.' });
+    }
+    
+    await userService.deleteDocument(documentId, userId);
+    
+    res.json({ success: true, message: 'Document deleted successfully' });
+    
   } catch (err) {
-    console.error('Create medication error:', err);
-    res.status(500).json({ success: false, error: 'Failed to create medication.' });
+    console.error('Delete document error:', err);
+    res.status(500).json({ success: false, error: 'Failed to delete document.' });
   }
 });
-
-app.get('/api/medications/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const medications = await medicationService.getUserMedications(userId);
-    res.json({ success: true, medications });
-  } catch (err) {
-    console.error('Get medications error:', err);
-    res.status(500).json({ success: false, error: 'Failed to get medications.' });
-  }
-});
-
-app.delete('/api/medications/:medicationId', async (req, res) => {
-  try {
-    const { medicationId } = req.params;
-    await medicationService.deleteMedication(medicationId);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Delete medication error:', err);
-    res.status(500).json({ success: false, error: 'Failed to delete medication.' });
-  }
-});
-
-// Start server for local development
-const PORT = process.env.PORT || 3000;
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
-  });
-}
 
 // Export for Vercel
 export default app;
