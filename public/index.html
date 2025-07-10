@@ -173,7 +173,7 @@
         /* Hover-to-delete styles for both visits and medications */
         .visit-item .delete-btn, .medication-item .delete-med-btn {
             position: absolute;
-            right: 0;
+            right: -8px;
             top: 50%;
             transform: translateY(-50%);
             background: #ff6b6b;
@@ -248,7 +248,7 @@
         
         /* Enhanced medication display styles */
         .medication-item {
-            padding: 1.5rem 0;
+            padding: 1.5rem 40px 1.5rem 0;
             border-bottom: 1px solid #e9ecef;
             position: relative;
         }
@@ -336,6 +336,10 @@
             background: var(--background);
             border-bottom: 1px solid var(--border-color);
         }
+        [data-theme="dark"] .health-assistant-chat {
+            background: #2d3748;
+            border-bottom: 1px solid #4a5568;
+        }
         .chat-message {
             margin-bottom: 1.5rem;
             display: flex;
@@ -371,7 +375,12 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             max-width: 80%;
             line-height: 1.6;
-            color: var(--text-primary);
+            color: #2d3748;
+        }
+        [data-theme="dark"] .chat-content {
+            background: #4a5568;
+            color: #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
         .chat-message.user .chat-content {
             background: var(--accent-gradient);
@@ -380,6 +389,9 @@
         .chat-input-container {
             padding: 1.5rem;
             background: var(--card-bg);
+        }
+        [data-theme="dark"] .chat-input-container {
+            background: #2d3748;
         }
         .chat-input-form {
             display: flex;
@@ -397,14 +409,22 @@
             max-height: 120px;
             font-family: inherit;
             transition: border-color 0.2s ease;
-            background: var(--card-bg);
-            color: var(--text-primary);
+            background: white;
+            color: #2d3748;
+        }
+        [data-theme="dark"] .chat-input {
+            background: #4a5568;
+            color: #e2e8f0;
+            border: 2px solid #4a5568;
         }
         .chat-input:focus {
             outline: none;
             border-color: #667eea;
             background: var(--card-bg);
             color: var(--text-primary);
+        }
+        [data-theme="dark"] .chat-input:focus {
+            border-color: #667eea;
         }
         .chat-send-btn {
             background: var(--accent-gradient);
@@ -433,9 +453,8 @@
             font-style: italic;
             padding: 2rem;
         }
-        
         [data-theme="dark"] .chat-input::placeholder {
-            color: var(--text-secondary);
+            color: #a0aec0;
         }
         .typing-indicator {
             display: flex;
@@ -872,9 +891,8 @@
             <div id="welcomeMessage" style="font-size:1.3rem; margin-top:0.5rem; color:#667eea; font-weight:600;"></div>
             <div id="currentDate" style="font-size:1rem; margin-top:0.3rem; color:var(--text-secondary); font-weight:500;"></div>
             <div style="position:absolute; top:2rem; right:2rem; display:flex; gap:1rem; align-items:center;">
-              <button id="darkModeToggle" style="background:#6c757d; color:#fff; border:none; border-radius:6px; padding:0.5rem 1rem; font-size:1rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:0.5rem;">
+              <button id="darkModeToggle" style="background:#6c757d; color:#fff; border:none; border-radius:6px; padding:0.5rem; font-size:1.2rem; cursor:pointer; display:flex; align-items:center;">
                 <span id="darkModeIcon">🌙</span>
-                <span id="darkModeText">Dark</span>
               </button>
               <button id="profileBtn" style="background:#667eea; color:#fff; border:none; border-radius:6px; padding:0.5rem 1.2rem; font-size:1rem; font-weight:600; cursor:pointer;">Profile</button>
               <button id="logoutBtn" style="background:#dc3545; color:#fff; border:none; border-radius:6px; padding:0.5rem 1.2rem; font-size:1rem; font-weight:600; cursor:pointer;">Logout</button>
@@ -1015,48 +1033,46 @@
         const selectedSpecialty = specialtyFilter.value;
         const sortOrder = dateFilter.value;
         let filteredVisits = visits.filter(visit => !selectedSpecialty || visit.specialty === selectedSpecialty);
-        
-        // Sort by createdAt timestamp (most recent first) for proper chronological order
+
+        // Sort by startedAt or date
         filteredVisits.sort((a, b) => {
-          const timestampA = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt)) : new Date(a.date);
-          const timestampB = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt)) : new Date(b.date);
-          return sortOrder === 'newest' ? timestampB - timestampA : timestampA - timestampB;
+          const dateA = a.startedAt ? new Date(a.startedAt) : new Date(a.date);
+          const dateB = b.startedAt ? new Date(b.startedAt) : new Date(b.date);
+          return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
         });
-        
+
         if (filteredVisits.length === 0) {
           visitsList.innerHTML = '<div class="empty-state">No visits match the current filters.</div>';
           return;
         }
-        
-        // Determine how many visits to show
+
+        // Show only 5 visits by default, with Show More/Show Less button
         const visitsToShow = showAllVisits ? filteredVisits : filteredVisits.slice(0, 5);
         const hasMoreVisits = filteredVisits.length > 5;
-        
+
         const visitItemsHtml = visitsToShow.map(visit => {
-          // Format date and time for display
-          let displayDateTime = 'Not specified';
-          if (visit.createdAt) {
-            const timestamp = visit.createdAt.toDate ? visit.createdAt.toDate() : new Date(visit.createdAt);
-            const dateStr = timestamp.toLocaleDateString();
-            const timeStr = timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            displayDateTime = `${dateStr} at ${timeStr}`;
-          } else if (visit.date) {
-            displayDateTime = visit.date;
+          let timeInfo = visit.date || 'Not specified';
+          if (visit.startedAt) {
+            const startTime = new Date(visit.startedAt);
+            const timeString = startTime.toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            });
+            timeInfo = `${visit.date || 'Not specified'} at ${timeString}`;
           }
-          
           return `
             <div class="visit-item">
               <div class="visit-content" onclick="location.href='visit-detail.html?id=${visit.id}'">
                 <div class="item-header">${visit.specialty || 'General Visit'}</div>
-                <div class="item-meta">Date: ${displayDateTime}</div>
+                <div class="item-meta">Date: ${timeInfo}</div>
                 <div class="item-summary">${visit.tldr || ''}</div>
               </div>
               <button class="delete-btn" onclick="deleteVisit('${visit.id}', event)">×</button>
             </div>
           `;
         }).join('');
-        
-        // Add show more/show less button if needed
+
         let showMoreButtonHtml = '';
         if (hasMoreVisits && !showAllVisits) {
           const remainingCount = filteredVisits.length - 5;
@@ -1076,10 +1092,10 @@
             </div>
           `;
         }
-        
+
         visitsList.innerHTML = visitItemsHtml + showMoreButtonHtml;
       }
-      
+
       window.toggleShowAllVisits = function() {
         showAllVisits = !showAllVisits;
         renderVisits();
@@ -1475,27 +1491,24 @@
         window.location.href = '/profile.html';
       };
 
-      // Dark mode toggle logic
-      const darkModeToggle = document.getElementById('darkModeToggle');
-      const darkModeIcon = document.getElementById('darkModeIcon');
-      const darkModeText = document.getElementById('darkModeText');
-      
-      // Check for saved theme preference or default to light mode
-      const currentTheme = localStorage.getItem('theme') || 'light';
-      document.documentElement.setAttribute('data-theme', currentTheme);
-      
-      // Update button appearance based on current theme
-      function updateDarkModeButton(theme) {
-        if (theme === 'dark') {
-          darkModeIcon.textContent = '☀️';
-          darkModeText.textContent = 'Light';
-          darkModeToggle.style.background = '#f59e0b';
-        } else {
-          darkModeIcon.textContent = '🌙';
-          darkModeText.textContent = 'Dark';
-          darkModeToggle.style.background = '#6c757d';
-        }
+          // Dark mode toggle logic
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const darkModeIcon = document.getElementById('darkModeIcon');
+    
+    // Check for saved theme preference or default to light mode
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    
+    // Update button appearance based on current theme
+    function updateDarkModeButton(theme) {
+      if (theme === 'dark') {
+        darkModeIcon.textContent = '☀️';
+        darkModeToggle.style.background = '#f59e0b';
+      } else {
+        darkModeIcon.textContent = '🌙';
+        darkModeToggle.style.background = '#6c757d';
       }
+    }
       
       updateDarkModeButton(currentTheme);
       
@@ -1581,6 +1594,15 @@
       sendBtn.textContent = 'Send';
     }
     
+    // Add Enter key support for health assistant input
+    if (healthAssistantInput) {
+      healthAssistantInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          healthAssistantForm.dispatchEvent(new Event("submit"));
+        }
+      });
+    }
     function renderChat() {
       if (chatHistory.length === 0) {
         healthAssistantChat.innerHTML = '<div class="chat-placeholder">Ask me anything about your health, medications, or visit history...</div>';

@@ -1,19 +1,13 @@
-// server.js
+// server.js - Vercel Compatible Version (No OpenAI SDK)
 
 import express from 'express';
 import multer from 'multer';
-import { createReadStream, renameSync, unlinkSync, existsSync, writeFileSync, readFileSync } from 'fs';
-import OpenAI, { toFile } from 'openai';
+import { FormData, fetch } from 'undici';
 import path from 'path';
 import dotenv from 'dotenv';
-import { execSync, execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { userService, visitService, medicationService } from './services/firebase-service.js';
-import { Readable } from 'stream';
-import mime from 'mime-types';
-import { tmpdir } from 'os';
-import ffmpegPath from 'ffmpeg-static';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -30,60 +24,88 @@ const upload = multer({
   }
 });
 
-// Initialise OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
 // Serve static files from the "public" folder
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// Helper function to clean up temporary files
-function cleanupFiles(...filePaths) {
-  filePaths.forEach(filePath => {
-    if (existsSync(filePath)) {
-      try {
-        unlinkSync(filePath);
-        console.log(`Cleaned up: ${filePath}`);
-      } catch (err) {
-        console.error(`Failed to clean up ${filePath}:`, err);
-      }
-    }
-  });
-}
+// Test endpoint
+app.get('/api/test', (req, res) => {
+  res.json({ success: true, message: 'Server is working!', timestamp: new Date().toISOString() });
+});
 
-// 1) Transcription endpoint
+
+
+// 1) Transcription endpoint - Direct OpenAI API call using FormData
 app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No audio file provided.' });
     }
 
-    const tmpIn  = join(tmpdir(), 'in.webm');
-    const tmpOut = join(tmpdir(), 'out.wav');
-    writeFileSync(tmpIn, req.file.buffer);
+    console.log('Received audio file:', req.file.originalname, 'Size:', req.file.size);
+    console.log('File mimetype:', req.file.mimetype);
 
-    // -ar 16000  -> 16 kHz, -ac 1 -> mono
-    execFileSync(ffmpegPath, ['-y', '-i', tmpIn, '-ar', '16000', '-ac', '1', tmpOut]);
+    // Create proper FormData for OpenAI API using undici
+    const formData = new FormData();
+    
+    // Add form fields
+    formData.append('model', 'whisper-1');
+    formData.append('response_format', 'text');
+    formData.append('temperature', '0.3');
+    formData.append('language', 'en');
+    
+    // Fix filename issue - ensure proper extension for OpenAI validation
+    const filename = req.file.originalname && req.file.originalname !== 'blob' 
+      ? req.file.originalname.endsWith('.webm') 
+        ? req.file.originalname 
+        : req.file.originalname + '.webm'
+      : 'recording.webm'; // fallback name with valid extension
+    
+    console.log('Using filename:', filename);
+    
+    // Create a File-like object for undici FormData
+    const audioFile = new File([req.file.buffer], filename, {
+      type: req.file.mimetype || 'audio/webm'
+    });
+    
+    // Add the audio file 
+    formData.append('file', audioFile);
 
-    const wavBuffer = readFileSync(tmpOut);
-    const wavFile = await toFile(wavBuffer, 'recording.wav', { contentType: 'audio/wav' });
-
-    const { text } = await openai.audio.transcriptions.create({
-      file: wavFile,
-      model: 'whisper-1'
+    console.log('Sending to OpenAI for transcription...');
+    
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: formData
     });
 
-    unlinkSync(tmpIn); unlinkSync(tmpOut);
-    res.json({ success: true, transcript: text });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    }
+
+    const transcription = await response.text();
+    
+    console.log(`Transcription completed. Length: ${transcription.length} characters`);
+    res.json({ success: true, transcript: transcription });
   } catch (err) {
     console.error('Transcription error:', err);
-    res.status(500).json({ success: false, error: 'Transcription failed.' });
+    
+    let errorMessage = 'Transcription failed.';
+    if (err.message && err.message.includes('timeout')) {
+      errorMessage = 'Audio processing timed out. Please try a shorter recording.';
+    } else if (err.message && err.message.includes('file size')) {
+      errorMessage = 'Audio file is too large. Please try a shorter recording.';
+    }
+    
+    res.status(500).json({ success: false, error: errorMessage });
   }
 });
 
-// 2) Summarisation endpoint
+// 2) Summarisation endpoint - Direct OpenAI API call
 app.post('/api/summarise', async (req, res) => {
   try {
     const { transcript } = req.body;
@@ -91,16 +113,14 @@ app.post('/api/summarise', async (req, res) => {
       return res.status(400).json({ success: false, error: 'No transcript provided.' });
     }
 
-    const chatResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a medical summarization assistant. Please produce a detailed, structured, and comprehensive summary that captures all key details from the transcript. Your summary should not omit any information but should be succinct and easy to understand.'
-        },
-        {
-          role: 'user',
-          content: `Analyze the following medical transcript and return a JSON object with the following keys:
+    const messages = [
+      {
+        role: 'system',
+        content: 'You are a medical summarization assistant. Please produce a detailed, structured, and comprehensive summary that captures all key details from the transcript. Your summary should not omit any information but should be succinct and easy to understand.'
+      },
+      {
+        role: 'user',
+        content: `Analyze the following medical transcript and return a JSON object with the following keys:
 {
   "summary": "A robust, multi-sentence summary covering all the concepts discussed.",
   "tldr": "A very short, one-sentence summary.",
@@ -203,12 +223,30 @@ If no chronic conditions are mentioned, return an empty array for the "chronicCo
 
 Transcript:
 ${transcript}`
-        }
-      ],
-      temperature: 0.4,
-      max_tokens: 800
+      }
+    ];
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: messages,
+        temperature: 0.4,
+        max_tokens: 800
+      })
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    }
+
+    const chatResponse = await response.json();
     const rawContent = chatResponse.choices[0].message.content.trim();
 
     // If JSON is wrapped in code block
@@ -230,9 +268,6 @@ ${transcript}`
 
     let { summary, specialty, date, tldr, medications, medicationActions, chronicConditions } = parsed;
 
-    // Always use today's date for new visits (since they're being recorded now)
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-
     console.log('Setting visit date to today:', date);
     console.log('AI detected medication actions:', JSON.stringify(medicationActions, null, 2));
     console.log('AI detected medications:', JSON.stringify(medications, null, 2));
@@ -253,49 +288,239 @@ ${transcript}`
   }
 });
 
-// Health AI Assistant endpoint
+// Health AI Assistant endpoint - Enhanced with conversation context and temporal intelligence
 app.post('/api/health-assistant', async (req, res) => {
   try {
-    const { userId, query } = req.body;
+    const { userId, query, conversationHistory = [] } = req.body;
     if (!userId || !query) {
       return res.status(400).json({ success: false, error: 'Missing userId or query.' });
     }
-    // Fetch user profile, visits, and medications
+    
+    // Fetch user profile, visits, and medications with full details
     const [profile, visits, medications] = await Promise.all([
       userService.getUserById(userId),
       visitService.getUserVisits(userId),
       medicationService.getUserMedications(userId)
     ]);
+    
     if (!profile) {
       return res.status(404).json({ success: false, error: 'User profile not found.' });
     }
-    // Format context for LLM
-    const context = `PATIENT PROFILE:\n${JSON.stringify(profile, null, 2)}\n\nVISIT HISTORY:\n${visits.map(v => `- ${v.date}: ${v.summary || v.tldr || ''}`).join('\n')}\n\nCURRENT MEDICATIONS:\n${medications.map(m => `- ${m.name} ${m.dosage || ''} ${m.frequency || ''}` ).join('\n')}`;
-    // Compose prompt
+    
+    // Add current date context for temporal queries
+    const currentDate = new Date();
+    const currentMonth = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+    const lastMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    const lastMonthName = lastMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
+    
+    // Sort visits by date (newest first) and add relative time context
+    const sortedVisits = visits.sort((a, b) => {
+      const dateA = a.startedAt ? new Date(a.startedAt) : new Date(a.date);
+      const dateB = b.startedAt ? new Date(b.startedAt) : new Date(b.date);
+      return dateB - dateA;
+    });
+    
+    // Group visits by month for temporal analysis
+    const visitsByMonth = {};
+    sortedVisits.forEach(visit => {
+      const visitDate = visit.startedAt ? new Date(visit.startedAt) : new Date(visit.date);
+      const monthKey = visitDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+      if (!visitsByMonth[monthKey]) {
+        visitsByMonth[monthKey] = [];
+      }
+      visitsByMonth[monthKey].push(visit);
+    });
+    
+    // Format detailed medication information including smart schedules and start dates
+    const detailedMedications = medications.map(med => {
+      let medInfo = `- ${med.name}`;
+      if (med.dosage) medInfo += ` (${med.dosage})`;
+      if (med.frequency) medInfo += ` - ${med.frequency}`;
+      if (med.timing) medInfo += ` at ${med.timing}`;
+      if (med.route) medInfo += ` via ${med.route}`;
+      if (med.laterality) medInfo += ` (${med.laterality})`;
+      if (med.duration) medInfo += ` for ${med.duration}`;
+      if (med.fullInstructions) medInfo += `\n  Instructions: ${med.fullInstructions}`;
+      if (med.startDate) {
+        const startDate = new Date(med.startDate);
+        const startMonth = startDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+        medInfo += `\n  Started: ${med.startDate} (${startMonth})`;
+      }
+      return medInfo;
+    }).join('\n');
+    
+    // Create temporal visit summary
+    const temporalVisitSummary = Object.entries(visitsByMonth).map(([month, monthVisits]) => {
+      return `${month}: ${monthVisits.length} visit(s)
+${monthVisits.map(v => `  - ${v.date}: ${v.specialty} - ${v.tldr || v.summary || 'No summary'}`).join('\n')}`;
+    }).join('\n\n');
+    
+    // Format context for LLM with enhanced temporal and medication details
+    const context = `CURRENT DATE: ${currentDate.toLocaleDateString()} (${currentMonth})
+LAST MONTH: ${lastMonthName}
+
+PATIENT PROFILE:
+${JSON.stringify(profile, null, 2)}
+
+VISIT HISTORY BY MONTH:
+${temporalVisitSummary}
+
+CURRENT MEDICATIONS (with detailed schedules and start dates):
+${detailedMedications}
+
+CHRONIC CONDITIONS:
+${profile.chronicConditions || 'None listed'}`;
+    
+    // Build conversation messages with history for context
     const messages = [
       {
         role: 'system',
-        content: 'You are a helpful health assistant. Use the following patient data to answer questions, summarize, or provide predictions. If you don\'t know, say so.'
+        content: `You are a helpful health assistant for this specific patient. Use the following patient data to answer questions accurately. 
+
+TEMPORAL QUERY HANDLING:
+- When asked about "last month" or specific months, filter information to that time period only
+- When asked about "the past X months/weeks", calculate the appropriate date range
+- Always specify the time period you're referring to in your response
+- If no data exists for the requested time period, clearly state that
+
+MEDICATION RESPONSES:
+- Refer to specific details including dosages, schedules, start dates, and instructions
+- When discussing duration or "how long", check the detailed medication information
+- Use the smart schedule data when available
+
+CONVERSATION CONTEXT:
+- Use the conversation history to understand follow-up questions and references
+- When someone asks "how long do I take it" after asking about a specific medication, understand the context
+
+Always provide specific, personalized answers based on the patient's actual data and the requested time frame.`
       },
       {
         role: 'user',
         content: `${context}\n\nUSER QUESTION:\n${query}`
       }
     ];
-    // Call OpenAI
-    const chatResponse = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages,
-      temperature: 0.3,
-      max_tokens: 800
+    
+    // Add conversation history for context (last 6 messages to avoid token limits)
+    if (conversationHistory.length > 0) {
+      const recentHistory = conversationHistory.slice(-6);
+      const historyContext = recentHistory.map(msg => 
+        `${msg.role === 'user' ? 'Patient' : 'Assistant'}: ${msg.content}`
+      ).join('\n');
+      
+      messages[1].content = `RECENT CONVERSATION:
+${historyContext}
+
+${context}
+
+CURRENT QUESTION:
+${query}`;
+    }
+    
+    // Call OpenAI API directly
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: messages,
+        temperature: 0.3,
+        max_tokens: 800
+      })
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    }
+
+    const chatResponse = await response.json();
     const answer = chatResponse.choices[0].message.content.trim();
+    
     return res.json({ success: true, answer });
   } catch (err) {
     console.error('Health Assistant error:', err);
     return res.status(500).json({ success: false, error: 'Health Assistant failed.' });
   }
 });
+
+// Firebase endpoints
+app.post('/api/visits', async (req, res) => {
+  try {
+    const visitData = req.body;
+    const docRef = await visitService.createVisit(visitData);
+    res.json({ success: true, visitId: docRef.id });
+  } catch (err) {
+    console.error('Create visit error:', err);
+    res.status(500).json({ success: false, error: 'Failed to create visit.' });
+  }
+});
+
+app.get('/api/visits/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const visits = await visitService.getUserVisits(userId);
+    res.json({ success: true, visits });
+  } catch (err) {
+    console.error('Get visits error:', err);
+    res.status(500).json({ success: false, error: 'Failed to get visits.' });
+  }
+});
+
+app.delete('/api/visits/:visitId', async (req, res) => {
+  try {
+    const { visitId } = req.params;
+    await visitService.deleteVisit(visitId);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete visit error:', err);
+    res.status(500).json({ success: false, error: 'Failed to delete visit.' });
+  }
+});
+
+app.post('/api/medications', async (req, res) => {
+  try {
+    const medicationData = req.body;
+    const docRef = await medicationService.createMedication(medicationData);
+    res.json({ success: true, medicationId: docRef.id });
+  } catch (err) {
+    console.error('Create medication error:', err);
+    res.status(500).json({ success: false, error: 'Failed to create medication.' });
+  }
+});
+
+app.get('/api/medications/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const medications = await medicationService.getUserMedications(userId);
+    res.json({ success: true, medications });
+  } catch (err) {
+    console.error('Get medications error:', err);
+    res.status(500).json({ success: false, error: 'Failed to get medications.' });
+  }
+});
+
+app.delete('/api/medications/:medicationId', async (req, res) => {
+  try {
+    const { medicationId } = req.params;
+    await medicationService.deleteMedication(medicationId);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete medication error:', err);
+    res.status(500).json({ success: false, error: 'Failed to delete medication.' });
+  }
+});
+
+// Start server for local development
+const PORT = process.env.PORT || 3000;
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+}
 
 // Export for Vercel
 export default app;

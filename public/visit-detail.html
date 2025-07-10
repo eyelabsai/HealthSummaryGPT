@@ -100,6 +100,211 @@
             padding: 2rem;
             color: #dc3545;
         }
+        
+        /* Specialty editing styles */
+        .specialty-edit-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .specialty-select {
+            flex: 1;
+            min-width: 150px;
+            padding: 0.5rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .specialty-select:disabled {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        .edit-btn {
+            background: var(--accent-gradient);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: transform 0.2s ease;
+        }
+        .edit-btn:hover {
+            transform: translateY(-1px);
+        }
+        .edit-btn.secondary {
+            background: var(--text-secondary);
+        }
+        
+        /* Health Assistant styles */
+        .health-assistant-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-top: 2rem;
+        }
+        .health-assistant-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .health-assistant-icon {
+            font-size: 2rem;
+        }
+        .health-assistant-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        .health-assistant-prompt {
+            background: rgba(102, 126, 234, 0.1);
+            border-left: 4px solid #667eea;
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 1.5rem;
+            font-style: italic;
+            color: var(--text-secondary);
+        }
+        .health-assistant-chat {
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: var(--background);
+        }
+        .chat-input-container {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+        .chat-input-form {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+            width: 100%;
+        }
+        .chat-input {
+            flex: 1;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            resize: none;
+            min-height: 60px;
+            max-height: 120px;
+            font-family: inherit;
+            transition: border-color 0.2s ease;
+            background: white;
+            color: #2d3748;
+        }
+        [data-theme="dark"] .chat-input {
+            background: #4a5568;
+            color: #e2e8f0;
+            border: 2px solid #4a5568;
+        }
+        .chat-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .chat-send-btn {
+            background: var(--accent-gradient);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            min-width: 100px;
+        }
+        .chat-send-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102,126,234,0.3);
+        }
+        .chat-send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .chat-message {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            align-items: flex-start;
+        }
+        .chat-message.user {
+            flex-direction: row-reverse;
+        }
+        .chat-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        .chat-avatar.user {
+            background: var(--accent-gradient);
+            color: white;
+        }
+        .chat-avatar.assistant {
+            background: var(--text-secondary);
+            color: white;
+        }
+        .chat-content {
+            background: var(--card-bg);
+            padding: 1rem;
+            border-radius: 12px;
+            max-width: 70%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .chat-message.user .chat-content {
+            background: #667eea;
+            color: white;
+        }
+        .chat-placeholder {
+            text-align: center;
+            color: var(--text-secondary);
+            font-style: italic;
+            padding: 2rem;
+        }
+        .typing-indicator {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        .typing-dots {
+            display: flex;
+            gap: 0.2rem;
+        }
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+            animation: typing 1.4s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
         @media (max-width: 768px) {
             .visit-detail-grid {
                 grid-template-columns: 1fr;
@@ -130,9 +335,8 @@
         <div class="header">
             <a href="/" class="back-link">← Back to Dashboard</a>
             <div style="position: absolute; top: 0; right: 0;">
-                <button id="darkModeToggle" style="background:#6c757d; color:#fff; border:none; border-radius:6px; padding:0.5rem 1rem; font-size:1rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:0.5rem; transition:background 0.2s ease;">
+                <button id="darkModeToggle" style="background:#6c757d; color:#fff; border:none; border-radius:6px; padding:0.5rem; font-size:1.2rem; cursor:pointer; display:flex; align-items:center; transition:background 0.2s ease;">
                     <span id="darkModeIcon">🌙</span>
-                    <span id="darkModeText">Dark</span>
                 </button>
             </div>
             <h1>Visit Details</h1>
@@ -140,6 +344,25 @@
 
         <div class="card" id="visit-details-container">
             <div class="loading">Loading visit details...</div>
+        </div>
+        
+        <div class="health-assistant-card" id="health-assistant-section" style="display: none;">
+            <div class="health-assistant-header">
+                <div class="health-assistant-icon">🤖</div>
+                <h2>Health Assistant</h2>
+            </div>
+            <div class="health-assistant-prompt">
+                💡 Have any questions about this visit? Ask your health assistant for personalized insights about your diagnosis, treatment, medications, or what to expect next.
+            </div>
+            <div id="healthAssistantChat" class="health-assistant-chat">
+                <div class="chat-placeholder">Ask me anything about this visit...</div>
+            </div>
+            <div class="chat-input-container">
+                <form id="healthAssistantForm" class="chat-input-form">
+                    <textarea id="healthAssistantInput" class="chat-input" placeholder="Ask about this visit..." required></textarea>
+                    <button type="submit" class="chat-send-btn">Send</button>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -178,8 +401,19 @@
                         return;
                     }
 
-                    // Format the date
-                    const visitDate = visit.createdAt ? new Date(visit.createdAt.toDate ? visit.createdAt.toDate() : visit.createdAt).toLocaleDateString() : 'Unknown';
+                    // Format the date and time
+                    let visitDate = visit.date || 'Not specified';
+                    let visitTime = '';
+                    
+                    if (visit.startedAt) {
+                        const startTime = new Date(visit.startedAt);
+                        visitTime = startTime.toLocaleTimeString([], { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: true 
+                        });
+                        visitDate = `${visitDate} at ${visitTime}`;
+                    }
 
                     // Format medication actions
                     const formatMedicationActions = (actions) => {
@@ -229,7 +463,37 @@
                                 </div>
                                 <div class="meta-item">
                                     <div class="meta-label">Medical Specialty</div>
-                                    <div class="meta-value">${visit.specialty || 'Uncategorized'}</div>
+                                    <div class="specialty-edit-container">
+                                        <select id="specialtySelect" class="specialty-select" disabled>
+                                            <option value="">Select specialty...</option>
+                                            <option value="Primary Care (PCP)">Primary Care (PCP)</option>
+                                            <option value="Family Medicine">Family Medicine</option>
+                                            <option value="Internal Medicine">Internal Medicine</option>
+                                            <option value="Cardiology">Cardiology</option>
+                                            <option value="Ophthalmology">Ophthalmology</option>
+                                            <option value="Dermatology">Dermatology</option>
+                                            <option value="Orthopedics">Orthopedics</option>
+                                            <option value="Neurology">Neurology</option>
+                                            <option value="Endocrinology">Endocrinology</option>
+                                            <option value="Gastroenterology">Gastroenterology</option>
+                                            <option value="Pulmonology">Pulmonology</option>
+                                            <option value="Rheumatology">Rheumatology</option>
+                                            <option value="Urology">Urology</option>
+                                            <option value="Gynecology">Gynecology</option>
+                                            <option value="Obstetrics">Obstetrics</option>
+                                            <option value="Pediatrics">Pediatrics</option>
+                                            <option value="Psychiatry">Psychiatry</option>
+                                            <option value="Oncology">Oncology</option>
+                                            <option value="Emergency Medicine">Emergency Medicine</option>
+                                            <option value="Urgent Care">Urgent Care</option>
+                                            <option value="Physical Therapy">Physical Therapy</option>
+                                            <option value="Occupational Therapy">Occupational Therapy</option>
+                                            <option value="Nutrition">Nutrition</option>
+                                            <option value="Uncategorized">Uncategorized</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                        <button id="editSpecialtyBtn" class="edit-btn secondary">✏️ Edit</button>
+                                    </div>
                                 </div>
                             </div>
                             <div class="summary-content">
@@ -244,6 +508,19 @@
                             </div>
                         </div>
                     `;
+                    
+                    // Set the specialty value
+                    const specialtySelect = document.getElementById('specialtySelect');
+                    specialtySelect.value = visit.specialty || 'Uncategorized';
+                    
+                    // Show the health assistant
+                    document.getElementById('health-assistant-section').style.display = 'block';
+                    
+                    // Set up specialty editing
+                    setupSpecialtyEditing(visitId, visit.specialty || 'Uncategorized');
+                    
+                    // Set up health assistant with visit context
+                    setupHealthAssistant(visit);
                 } catch (error) {
                     console.error('Error loading visit:', error);
                     visitDetailsContainer.innerHTML = '<div class="error">Error loading visit details: ' + error.message + '</div>';
@@ -254,7 +531,6 @@
         // Dark mode toggle logic
         const darkModeToggle = document.getElementById('darkModeToggle');
         const darkModeIcon = document.getElementById('darkModeIcon');
-        const darkModeText = document.getElementById('darkModeText');
         
         // Check for saved theme preference or default to light mode
         const currentTheme = localStorage.getItem('theme') || 'light';
@@ -264,11 +540,9 @@
         function updateDarkModeButton(theme) {
             if (theme === 'dark') {
                 darkModeIcon.textContent = '☀️';
-                darkModeText.textContent = 'Light';
                 darkModeToggle.style.background = '#f59e0b';
             } else {
                 darkModeIcon.textContent = '🌙';
-                darkModeText.textContent = 'Dark';
                 darkModeToggle.style.background = '#6c757d';
             }
         }
@@ -283,6 +557,175 @@
             localStorage.setItem('theme', newTheme);
             updateDarkModeButton(newTheme);
         };
+
+        // Specialty editing functionality
+        function setupSpecialtyEditing(visitId, currentSpecialty) {
+            const specialtySelect = document.getElementById('specialtySelect');
+            const editBtn = document.getElementById('editSpecialtyBtn');
+            
+            editBtn.addEventListener('click', async () => {
+                if (specialtySelect.disabled) {
+                    // Enable editing
+                    specialtySelect.disabled = false;
+                    editBtn.textContent = '✓ Save';
+                    editBtn.className = 'edit-btn';
+                    specialtySelect.focus();
+                } else {
+                    // Save changes
+                    const newSpecialty = specialtySelect.value;
+                    try {
+                        editBtn.textContent = 'Saving...';
+                        editBtn.disabled = true;
+                        
+                        await firebaseClient.updateVisit(visitId, {
+                            specialty: newSpecialty
+                        });
+                        
+                        // Success
+                        specialtySelect.disabled = true;
+                        editBtn.textContent = '✏️ Edit';
+                        editBtn.className = 'edit-btn secondary';
+                        editBtn.disabled = false;
+                        
+                        // Show success message briefly
+                        const originalText = editBtn.textContent;
+                        editBtn.textContent = '✓ Saved';
+                        setTimeout(() => {
+                            editBtn.textContent = originalText;
+                        }, 2000);
+                        
+                    } catch (error) {
+                        console.error('Error updating specialty:', error);
+                        editBtn.textContent = '❌ Error';
+                        editBtn.disabled = false;
+                        setTimeout(() => {
+                            editBtn.textContent = '✓ Save';
+                        }, 2000);
+                    }
+                }
+            });
+        }
+
+        // Health assistant functionality
+        function setupHealthAssistant(visit) {
+            const healthAssistantForm = document.getElementById('healthAssistantForm');
+            const healthAssistantInput = document.getElementById('healthAssistantInput');
+            const healthAssistantChat = document.getElementById('healthAssistantChat');
+            let chatHistory = [];
+            
+            // Add visit context to the first message
+            const visitContext = `This conversation is about a specific visit: ${visit.specialty || 'Uncategorized'} visit on ${visit.date}. Summary: ${visit.summary || 'No summary'}. TL;DR: ${visit.tldr || 'No TL;DR'}.`;
+            
+            if (healthAssistantForm) {
+                healthAssistantForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const question = healthAssistantInput.value.trim();
+                    if (!question) return;
+                    
+                    healthAssistantInput.value = '';
+                    const sendBtn = healthAssistantForm.querySelector('.chat-send-btn');
+                    sendBtn.disabled = true;
+                    sendBtn.textContent = 'Sending...';
+                    
+                    // Show user question
+                    chatHistory.push({ role: 'user', content: question });
+                    renderChat();
+                    
+                    // Get userId from Firebase Auth
+                    const user = firebase.auth().currentUser;
+                    if (!user) {
+                        chatHistory.push({ role: 'assistant', content: 'You must be logged in to use the Health Assistant.' });
+                        renderChat();
+                        sendBtn.disabled = false;
+                        sendBtn.textContent = 'Send';
+                        return;
+                    }
+                    
+                    // Show typing indicator
+                    chatHistory.push({ role: 'assistant', content: 'typing' });
+                    renderChat();
+                    
+                    try {
+                        // Pass conversation history for context, including visit context
+                        const conversationHistory = chatHistory.filter(msg => msg.content !== 'typing');
+                        // Add visit context as system message
+                        const contextualHistory = [
+                            { role: 'system', content: visitContext },
+                            ...conversationHistory
+                        ];
+                        
+                        const data = await firebaseClient.askHealthAssistant(question, contextualHistory);
+                        
+                        // Remove typing indicator
+                        chatHistory = chatHistory.filter(msg => msg.content !== 'typing');
+                        
+                        if (data.success) {
+                            chatHistory.push({ role: 'assistant', content: data.answer });
+                        } else {
+                            chatHistory.push({ role: 'assistant', content: data.error || 'Sorry, something went wrong.' });
+                        }
+                        renderChat();
+                    } catch (err) {
+                        chatHistory = chatHistory.filter(msg => msg.content !== 'typing');
+                        chatHistory.push({ role: 'assistant', content: 'Sorry, there was a network or server error.' });
+                        renderChat();
+                    }
+                    
+                    sendBtn.disabled = false;
+                    sendBtn.textContent = 'Send';
+                });
+                
+                // Add Enter key support
+                healthAssistantInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        healthAssistantForm.dispatchEvent(new Event('submit'));
+                    }
+                });
+            }
+            
+            function renderChat() {
+                if (chatHistory.length === 0) {
+                    healthAssistantChat.innerHTML = '<div class="chat-placeholder">Ask me anything about this visit...</div>';
+                    return;
+                }
+                
+                healthAssistantChat.innerHTML = chatHistory.map(msg => {
+                    if (msg.content === 'typing') {
+                        return `
+                            <div class="chat-message">
+                                <div class="chat-avatar assistant">AI</div>
+                                <div class="chat-content">
+                                    <div class="typing-indicator">
+                                        <span>Thinking</span>
+                                        <div class="typing-dots">
+                                            <div class="typing-dot"></div>
+                                            <div class="typing-dot"></div>
+                                            <div class="typing-dot"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    const isUser = msg.role === 'user';
+                    const avatarText = isUser ? 'U' : 'AI';
+                    const avatarClass = isUser ? 'user' : 'assistant';
+                    
+                    return `
+                        <div class="chat-message ${isUser ? 'user' : ''}">
+                            <div class="chat-avatar ${avatarClass}">${avatarText}</div>
+                            <div class="chat-content">
+                                ${msg.content.replace(/\n/g, '<br>')}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                healthAssistantChat.scrollTop = healthAssistantChat.scrollHeight;
+            }
+        }
     </script>
 </body>
 </html> 

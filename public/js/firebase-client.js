@@ -75,6 +75,14 @@ const firebaseClient = {
     return null;
   },
 
+  async updateVisit(visitId, updates) {
+    const docRef = db.collection('visits').doc(visitId);
+    return await docRef.update({
+      ...updates,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  },
+
   async deleteVisit(visitId) {
     const docRef = db.collection('visits').doc(visitId);
     await docRef.delete();
@@ -274,7 +282,7 @@ const firebaseClient = {
   },
 
   // Health Assistant
-  async askHealthAssistant(query) {
+  async askHealthAssistant(query, conversationHistory = []) {
     const user = firebase.auth().currentUser;
     if (!user) {
       throw new Error('User not authenticated');
@@ -287,7 +295,8 @@ const firebaseClient = {
       },
       body: JSON.stringify({
         userId: user.uid,
-        query: query
+        query: query,
+        conversationHistory: conversationHistory
       })
     });
     
