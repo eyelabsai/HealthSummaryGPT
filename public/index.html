@@ -1008,6 +1008,8 @@
         specialtyFilter.value = currentSelection;
       }
 
+      let showAllVisits = false;
+      
       async function renderVisits() {
         const visits = await getVisits();
         const selectedSpecialty = specialtyFilter.value;
@@ -1026,7 +1028,11 @@
           return;
         }
         
-        visitsList.innerHTML = filteredVisits.map(visit => {
+        // Determine how many visits to show
+        const visitsToShow = showAllVisits ? filteredVisits : filteredVisits.slice(0, 5);
+        const hasMoreVisits = filteredVisits.length > 5;
+        
+        const visitItemsHtml = visitsToShow.map(visit => {
           // Format date and time for display
           let displayDateTime = 'Not specified';
           if (visit.createdAt) {
@@ -1049,7 +1055,35 @@
             </div>
           `;
         }).join('');
+        
+        // Add show more/show less button if needed
+        let showMoreButtonHtml = '';
+        if (hasMoreVisits && !showAllVisits) {
+          const remainingCount = filteredVisits.length - 5;
+          showMoreButtonHtml = `
+            <div class="show-more-section" style="text-align: center; margin-top: 1rem; padding: 1rem; border-top: 1px solid var(--border-color);">
+              <button onclick="toggleShowAllVisits()" style="background: var(--accent-gradient); color: white; border: none; border-radius: 8px; padding: 0.75rem 1.5rem; cursor: pointer; font-weight: 500; transition: opacity 0.2s ease;">
+                Show ${remainingCount} More Visit${remainingCount > 1 ? 's' : ''} ▼
+              </button>
+            </div>
+          `;
+        } else if (showAllVisits && hasMoreVisits) {
+          showMoreButtonHtml = `
+            <div class="show-more-section" style="text-align: center; margin-top: 1rem; padding: 1rem; border-top: 1px solid var(--border-color);">
+              <button onclick="toggleShowAllVisits()" style="background: var(--text-secondary); color: white; border: none; border-radius: 8px; padding: 0.75rem 1.5rem; cursor: pointer; font-weight: 500; transition: opacity 0.2s ease;">
+                Show Less ▲
+              </button>
+            </div>
+          `;
+        }
+        
+        visitsList.innerHTML = visitItemsHtml + showMoreButtonHtml;
       }
+      
+      window.toggleShowAllVisits = function() {
+        showAllVisits = !showAllVisits;
+        renderVisits();
+      };
 
       async function renderMedications() {
         const medications = await getMedications();
