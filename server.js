@@ -30,6 +30,15 @@ const upload = multer({
   }
 });
 
+// Configure multer for document uploads
+const documentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit for documents
+    files: 10 // Allow multiple files
+  }
+});
+
 // Initialise OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -294,6 +303,128 @@ app.post('/api/health-assistant', async (req, res) => {
   } catch (err) {
     console.error('Health Assistant error:', err);
     return res.status(500).json({ success: false, error: 'Health Assistant failed.' });
+  }
+});
+
+// Document upload endpoint
+app.post('/api/upload-document', documentUpload.single('document'), async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'Missing userId.' });
+    }
+    
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No file uploaded.' });
+    }
+    
+    const file = req.file;
+    
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid file type. Only PDF, PNG, JPG, and JPEG files are allowed.' 
+      });
+    }
+    
+    // Create document data
+    const documentData = {
+      userId,
+      name: file.originalname,
+      type: file.mimetype,
+      size: file.size,
+      uploadDate: new Date().toISOString(),
+      buffer: file.buffer // Pass the buffer directly instead of base64
+    };
+    
+    // Save to Firestore (we'll add this to firebase-service.js)
+    const docRef = await userService.createDocument(documentData);
+    
+    res.json({
+      success: true,
+      documentId: docRef.id,
+      message: 'Document uploaded successfully'
+    });
+    
+  } catch (err) {
+    console.error('Document upload error:', err);
+    res.status(500).json({ success: false, error: 'Document upload failed.' });
+  }
+});
+
+// Get user documents endpoint
+app.get('/api/documents', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'Missing userId.' });
+    }
+    
+    const documents = await userService.getUserDocuments(userId);
+    
+    // Remove binary data from response for list view
+    const documentsWithoutData = documents.map(doc => ({
+      id: doc.id,
+      name: doc.name,
+      type: doc.type,
+      size: doc.size,
+      uploadDate: doc.uploadDate
+    }));
+    
+    res.json(documentsWithoutData);
+    
+  } catch (err) {
+    console.error('Get documents error:', err);
+    res.status(500).json({ success: false, error: 'Failed to retrieve documents.' });
+  }
+});
+
+// Download document endpoint
+app.get('/api/download-document/:documentId', async (req, res) => {
+  try {
+    const { documentId } = req.params;
+    const { userId } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'Missing userId.' });
+    }
+    
+    const document = await userService.getDocumentById(documentId, userId);
+    
+    if (!document) {
+      return res.status(404).json({ success: false, error: 'Document not found.' });
+    }
+    
+    // Redirect to Firebase Storage download URL
+    res.redirect(document.downloadURL);
+    
+  } catch (err) {
+    console.error('Download document error:', err);
+    res.status(500).json({ success: false, error: 'Failed to download document.' });
+  }
+});
+
+// Delete document endpoint
+app.delete('/api/delete-document/:documentId', async (req, res) => {
+  try {
+    const { documentId } = req.params;
+    const { userId } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'Missing userId.' });
+    }
+    
+    await userService.deleteDocument(documentId, userId);
+    
+    res.json({ success: true, message: 'Document deleted successfully' });
+    
+  } catch (err) {
+    console.error('Delete document error:', err);
+    res.status(500).json({ success: false, error: 'Failed to delete document.' });
   }
 });
 
