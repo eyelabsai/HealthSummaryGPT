@@ -14,11 +14,10 @@
   "dependencies": {
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
-    "ffmpeg-static": "^5.2.0",
     "firebase": "^11.9.1",
     "firebase-admin": "^13.4.0",
     "mime-types": "^3.0.1",
     "multer": "^2.0.1",
-    "openai": "^5.8.3"
+    "undici": "^7.11.0"
   }
 }
