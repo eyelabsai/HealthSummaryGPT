@@ -45,34 +45,35 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     console.log('Received audio file:', req.file.originalname, 'Size:', req.file.size);
     console.log('File mimetype:', req.file.mimetype);
 
+    // Determine correct filename and mimetype
+    let filename = req.file.originalname && req.file.originalname !== 'blob'
+      ? req.file.originalname
+      : 'recording.m4a'; // fallback name
+    let mimetype = req.file.mimetype || 'audio/m4a';
+
+    // If the filename is missing an extension, default to .m4a
+    if (!filename.includes('.')) {
+      filename += '.m4a';
+    }
+
+    console.log('Using filename:', filename);
+    console.log('Using mimetype:', mimetype);
+
+    // Create a File-like object for undici FormData
+    const audioFile = new File([req.file.buffer], filename, {
+      type: mimetype
+    });
+
     // Create proper FormData for OpenAI API using undici
     const formData = new FormData();
-    
-    // Add form fields
     formData.append('model', 'whisper-1');
     formData.append('response_format', 'text');
     formData.append('temperature', '0.3');
     formData.append('language', 'en');
-    
-    // Fix filename issue - ensure proper extension for OpenAI validation
-    const filename = req.file.originalname && req.file.originalname !== 'blob' 
-      ? req.file.originalname.endsWith('.webm') 
-        ? req.file.originalname 
-        : req.file.originalname + '.webm'
-      : 'recording.webm'; // fallback name with valid extension
-    
-    console.log('Using filename:', filename);
-    
-    // Create a File-like object for undici FormData
-    const audioFile = new File([req.file.buffer], filename, {
-      type: req.file.mimetype || 'audio/webm'
-    });
-    
-    // Add the audio file 
     formData.append('file', audioFile);
 
     console.log('Sending to OpenAI for transcription...');
-    
+
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
@@ -88,19 +89,19 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     }
 
     const transcription = await response.text();
-    
+
     console.log(`Transcription completed. Length: ${transcription.length} characters`);
     res.json({ success: true, transcript: transcription });
   } catch (err) {
     console.error('Transcription error:', err);
-    
+
     let errorMessage = 'Transcription failed.';
     if (err.message && err.message.includes('timeout')) {
       errorMessage = 'Audio processing timed out. Please try a shorter recording.';
     } else if (err.message && err.message.includes('file size')) {
       errorMessage = 'Audio file is too large. Please try a shorter recording.';
     }
-    
+
     res.status(500).json({ success: false, error: errorMessage });
   }
 });
